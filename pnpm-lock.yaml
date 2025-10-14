@@ -166,6 +166,9 @@ importers:
       '@crypto-pnl/types':
         specifier: workspace:*
         version: link:../types
+      '@supabase/ssr':
+        specifier: ^0.5.2
+        version: 0.5.2(@supabase/supabase-js@2.75.0)
       '@supabase/supabase-js':
         specifier: ^2.45.0
         version: 2.75.0
@@ -181,6 +184,9 @@ importers:
       '@trpc/server':
         specifier: ^11.0.0-rc.477
         version: 11.6.0(typescript@5.9.3)
+      next:
+        specifier: ^15.0.3
+        version: 15.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       superjson:
         specifier: ^2.2.1
         version: 2.2.2

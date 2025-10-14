@@ -10,9 +10,11 @@
     "@trpc/react-query": "^11.0.0-rc.477",
     "@tanstack/react-query": "^5.51.23",
     "@supabase/supabase-js": "^2.45.0",
+    "@supabase/ssr": "^0.5.2",
     "@crypto-pnl/types": "workspace:*",
     "@crypto-pnl/pnl-engine": "workspace:*",
     "zod": "^3.23.8",
-    "superjson": "^2.2.1"
+    "superjson": "^2.2.1",
+    "next": "^15.0.3"
   }
 }
