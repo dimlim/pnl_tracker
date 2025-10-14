@@ -20,44 +20,17 @@ export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: topAssets } = trpc.assets.list.useQuery()
 
-  // Fetch positions and transactions for all portfolios
-  const portfolioIds = portfolios?.map((p: any) => p.id) || []
-  const positionsQueries = portfolioIds.map(id => 
-    trpc.positions.list.useQuery({ portfolio_id: id }, { enabled: !!id })
-  )
-  const transactionsQueries = portfolioIds.map(id =>
-    trpc.transactions.list.useQuery({ portfolio_id: id }, { enabled: !!id })
-  )
-
-  // Combine all transactions
-  const allTransactions = transactionsQueries
-    .flatMap(query => query.data || [])
-    .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
-  // Calculate real stats from all portfolios
-  let totalValue = 0
-  let totalCost = 0
-
-  positionsQueries.forEach(query => {
-    if (query.data) {
-      query.data.forEach((pos: any) => {
-        const currentPrice = pos.assets?.current_price || 0
-        totalValue += pos.quantity * currentPrice
-        totalCost += pos.quantity * pos.avg_price
-      })
-    }
-  })
-
-  const totalPnL = totalValue - totalCost
-  const pnlPercentage = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
-
+  // Calculate stats from portfolios (simplified - will calculate from positions later)
   const mockStats = {
-    totalValue,
-    totalPnL,
-    pnlPercentage,
+    totalValue: 0,
+    totalPnL: 0,
+    pnlPercentage: 0,
     portfolioCount: portfolios?.length || 0,
-    dayChange: 0, // TODO: Calculate from 24h price changes
+    dayChange: 0,
   }
+
+  // Empty transactions for now (will add proper fetching later)
+  const allTransactions: any[] = []
 
   return (
     <div className="space-y-8 animate-fade-in">
