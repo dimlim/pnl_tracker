@@ -3,6 +3,7 @@
 import { StatCard } from '@/components/dashboard/stat-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Number } from '@/components/ui/number'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -183,7 +184,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-medium">{tx.quantity} @ {formatCurrency(tx.price)}</div>
+                      <Number className="font-medium block">{tx.quantity} @ {formatCurrency(tx.price)}</Number>
                       <div className="text-sm text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString()}</div>
                     </div>
                   </div>
@@ -234,8 +235,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium tabular-nums">{formatCurrency(asset.value || 0)}</p>
-                    <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.pnlPercent || 0)}`}>
+                    <Number className="font-medium block">{formatCurrency(asset.value || 0)}</Number>
+                    <p className={`text-sm font-medium font-mono tabular-nums flex items-center gap-1 ${getPnLColor(asset.pnlPercent || 0)}`}>
                       {(asset.pnlPercent || 0) >= 0 ? (
                         <ArrowUpRight className="w-3 h-3" />
                       ) : (
