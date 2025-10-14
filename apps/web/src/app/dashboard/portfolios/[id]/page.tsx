@@ -1,17 +1,35 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ArrowLeft, TrendingUp, TrendingDown, Wallet, Edit, Trash2, Loader2 } from 'lucide-react'
 import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 
 export default function PortfolioDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const router = useRouter()
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPnlMethod, setEditPnlMethod] = useState<'fifo' | 'lifo' | 'avg'>('fifo')
+  const [editIncludeFees, setEditIncludeFees] = useState(true)
   
   const { data: portfolio, isLoading: portfolioLoading } = trpc.portfolios.getById.useQuery({ id })
   const { data: positions, isLoading: positionsLoading } = trpc.positions.list.useQuery(
@@ -22,6 +40,44 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
     { portfolio_id: id },
     { enabled: !!id }
   )
+
+  const utils = trpc.useUtils()
+  
+  const updatePortfolio = trpc.portfolios.update.useMutation({
+    onSuccess: () => {
+      utils.portfolios.getById.invalidate({ id })
+      utils.portfolios.list.invalidate()
+      setIsEditDialogOpen(false)
+    },
+  })
+
+  const deletePortfolio = trpc.portfolios.delete.useMutation({
+    onSuccess: () => {
+      router.push('/dashboard/portfolios')
+    },
+  })
+
+  const handleEdit = () => {
+    if (!portfolio) return
+    setEditName(portfolio.name)
+    setEditPnlMethod(portfolio.pnl_method as 'fifo' | 'lifo' | 'avg')
+    setEditIncludeFees(portfolio.include_fees)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault()
+    updatePortfolio.mutate({
+      id,
+      name: editName,
+      pnl_method: editPnlMethod,
+      include_fees: editIncludeFees,
+    })
+  }
+
+  const handleDelete = () => {
+    deletePortfolio.mutate({ id })
+  }
 
   if (portfolioLoading) {
     return (
@@ -72,7 +128,17 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        <AddTransactionDialog portfolioId={id} />
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleEdit}>
+            <Edit className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete
+          </Button>
+          <AddTransactionDialog portfolioId={id} />
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -256,6 +322,101 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <form onSubmit={handleUpdate}>
+            <DialogHeader>
+              <DialogTitle>Edit Portfolio</DialogTitle>
+              <DialogDescription>
+                Update your portfolio settings
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Portfolio Name</Label>
+                <Input
+                  id="name"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pnl_method">P&L Method</Label>
+                <Select value={editPnlMethod} onValueChange={(v: any) => setEditPnlMethod(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fifo">FIFO (First In, First Out)</SelectItem>
+                    <SelectItem value="lifo">LIFO (Last In, First Out)</SelectItem>
+                    <SelectItem value="avg">Average Cost</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="include_fees"
+                  checked={editIncludeFees}
+                  onChange={(e) => setEditIncludeFees(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="include_fees">Include fees in calculations</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updatePortfolio.isPending}>
+                {updatePortfolio.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Portfolio</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{portfolio?.name}"? This action cannot be undone and will delete all associated transactions.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deletePortfolio.isPending}>
+              {deletePortfolio.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete Portfolio'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
