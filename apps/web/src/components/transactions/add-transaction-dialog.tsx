@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, Search } from 'lucide-react'
 
 interface AddTransactionDialogProps {
   portfolioId: string
@@ -26,6 +26,7 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<'buy' | 'sell' | 'transfer_in' | 'transfer_out'>('buy')
   const [selectedAsset, setSelectedAsset] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [quantity, setQuantity] = useState('')
   const [price, setPrice] = useState('')
   const [fee, setFee] = useState('')
@@ -33,6 +34,12 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
 
   const utils = trpc.useUtils()
   const { data: assets } = trpc.assets.list.useQuery()
+  
+  // Filter assets based on search query
+  const filteredAssets = assets?.filter((a: any) => 
+    a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
   
   const createTransaction = trpc.transactions.create.useMutation({
     onSuccess: () => {
@@ -98,26 +105,41 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
 
             <div className="space-y-2">
               <Label htmlFor="asset">Asset</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search crypto..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
               <Select value={selectedAsset} onValueChange={setSelectedAsset} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Select asset" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {assets?.map((a) => (
-                    <SelectItem key={a.id} value={a.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        {a.icon_url ? (
-                          <img src={a.icon_url} alt={a.symbol} className="w-5 h-5 rounded-full" />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
-                            {a.symbol.slice(0, 1)}
-                          </div>
-                        )}
-                        <span className="font-medium">{a.symbol}</span>
-                        <span className="text-muted-foreground">- {a.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  {filteredAssets && filteredAssets.length > 0 ? (
+                    filteredAssets.map((a: any) => (
+                      <SelectItem key={a.id} value={a.id.toString()}>
+                        <div className="flex items-center gap-2">
+                          {a.icon_url ? (
+                            <img src={a.icon_url} alt={a.symbol} className="w-5 h-5 rounded-full" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                              {a.symbol.slice(0, 1)}
+                            </div>
+                          )}
+                          <span className="font-medium">{a.symbol}</span>
+                          <span className="text-muted-foreground">- {a.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-muted-foreground">
+                      No assets found
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
             </div>
