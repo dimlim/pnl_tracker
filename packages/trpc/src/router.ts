@@ -52,6 +52,144 @@ export const appRouter = t.router({
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
         return data as Asset[]
       }),
+
+    getById: t.procedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const { data, error } = await ctx.supabase
+          .from('assets')
+          .select('*')
+          .eq('id', input.id)
+          .single()
+
+        if (error) throw new TRPCError({ code: 'NOT_FOUND', message: 'Asset not found' })
+        return data as Asset
+      }),
+
+    getStats: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        // Get all user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('user_id', ctx.user.id)
+
+        if (!portfolios || portfolios.length === 0) {
+          return {
+            totalQuantity: 0,
+            avgBuyPrice: 0,
+            totalPnL: 0,
+            pnlPercent: 0,
+            transactionCount: 0,
+          }
+        }
+
+        const portfolioIds = portfolios.map(p => p.id)
+
+        // Get all transactions for this asset across all portfolios
+        const { data: txs } = await ctx.supabase
+          .from('transactions')
+          .select('*')
+          .eq('asset_id', input.id)
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: true })
+
+        if (!txs || txs.length === 0) {
+          return {
+            totalQuantity: 0,
+            avgBuyPrice: 0,
+            totalPnL: 0,
+            pnlPercent: 0,
+            transactionCount: 0,
+          }
+        }
+
+        // Calculate stats
+        let totalQuantity = 0
+        let totalCost = 0
+        let totalBought = 0
+        let totalBoughtCost = 0
+
+        for (const tx of txs) {
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            totalQuantity += tx.quantity
+            totalCost += tx.quantity * tx.price + (tx.fee || 0)
+            totalBought += tx.quantity
+            totalBoughtCost += tx.quantity * tx.price + (tx.fee || 0)
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            const avgPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0
+            totalQuantity -= tx.quantity
+            totalCost -= tx.quantity * avgPrice
+          }
+        }
+
+        // Get current price
+        const { data: asset } = await ctx.supabase
+          .from('assets')
+          .select('current_price')
+          .eq('id', input.id)
+          .single()
+
+        const currentPrice = asset?.current_price || 0
+        const currentValue = totalQuantity * currentPrice
+        const avgBuyPrice = totalBought > 0 ? totalBoughtCost / totalBought : 0
+        const totalPnL = currentValue - totalCost
+        const pnlPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
+        return {
+          totalQuantity,
+          avgBuyPrice,
+          totalPnL,
+          pnlPercent,
+          transactionCount: txs.length,
+        }
+      }),
+
+    getPriceHistory: t.procedure
+      .input(z.object({ id: z.number(), days: z.number().default(30) }))
+      .query(async ({ ctx, input }) => {
+        const daysAgo = new Date()
+        daysAgo.setDate(daysAgo.getDate() - input.days)
+
+        const { data, error } = await ctx.supabase
+          .from('price_ticks')
+          .select('*')
+          .eq('asset_id', input.id)
+          .gte('ts', daysAgo.toISOString())
+          .order('ts', { ascending: false })
+          .limit(100)
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data || []
+      }),
+
+    getUserTransactions: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        // Get all user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('user_id', ctx.user.id)
+
+        if (!portfolios || portfolios.length === 0) {
+          return []
+        }
+
+        const portfolioIds = portfolios.map(p => p.id)
+
+        // Get transactions
+        const { data, error } = await ctx.supabase
+          .from('transactions')
+          .select('*')
+          .eq('asset_id', input.id)
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: false })
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data || []
+      }),
   }),
 
   // Portfolios

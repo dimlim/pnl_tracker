@@ -211,7 +211,11 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {topPerformers && topPerformers.length > 0 ? (
               topPerformers.map((asset: any) => (
-                <div key={asset.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                <Link
+                  key={asset.id}
+                  href={`/dashboard/assets/${asset.id}`}
+                  className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
+                >
                   <div className="flex items-center gap-3">
                     {asset.icon_url ? (
                       <img 
@@ -225,7 +229,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                     <div>
-                      <p className="font-medium">{asset.name}</p>
+                      <p className="font-medium group-hover:text-primary transition-colors">{asset.name}</p>
                       <p className="text-sm text-muted-foreground">{asset.symbol}</p>
                     </div>
                   </div>
@@ -240,7 +244,7 @@ export default function DashboardPage() {
                       {formatPercentage(Math.abs(asset.pnlPercent || 0))}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))
             ) : (
               <div className="text-center py-8 text-muted-foreground">

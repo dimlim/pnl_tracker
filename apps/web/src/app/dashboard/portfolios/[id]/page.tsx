@@ -144,9 +144,10 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
                 const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0
 
                 return (
-                  <div
+                  <Link
                     key={position.id}
-                    className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors"
+                    href={`/dashboard/assets/${position.asset_id}`}
+                    className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors group"
                   >
                     <div className="flex items-center gap-4">
                       {position.assets?.icon_url ? (
@@ -161,7 +162,7 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
                         </div>
                       )}
                       <div>
-                        <div className="font-medium">{position.assets?.symbol}</div>
+                        <div className="font-medium group-hover:text-primary transition-colors">{position.assets?.symbol}</div>
                         <div className="text-sm text-muted-foreground">
                           {formatNumber(position.quantity)} @ {formatCurrency(position.avg_price)}
                         </div>
@@ -174,7 +175,7 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
                         {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)} ({pnl >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
