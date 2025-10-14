@@ -153,9 +153,17 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
                     className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-                        <span className="text-sm font-bold">{position.assets?.symbol.slice(0, 2)}</span>
-                      </div>
+                      {position.assets?.icon_url ? (
+                        <img 
+                          src={position.assets.icon_url} 
+                          alt={position.assets.symbol} 
+                          className="w-10 h-10 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                          <span className="text-sm font-bold">{position.assets?.symbol.slice(0, 2)}</span>
+                        </div>
+                      )}
                       <div>
                         <div className="font-medium">{position.assets?.symbol}</div>
                         <div className="text-sm text-muted-foreground">

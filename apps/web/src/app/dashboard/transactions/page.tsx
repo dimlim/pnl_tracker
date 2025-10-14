@@ -158,10 +158,20 @@ export default function TransactionsPage() {
                       <SelectTrigger>
                         <SelectValue placeholder="Select asset" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-[300px]">
                         {assets?.map((a) => (
                           <SelectItem key={a.id} value={a.id.toString()}>
-                            {a.symbol} - {a.name}
+                            <div className="flex items-center gap-2">
+                              {a.icon_url ? (
+                                <img src={a.icon_url} alt={a.symbol} className="w-5 h-5 rounded-full" />
+                              ) : (
+                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                                  {a.symbol.slice(0, 1)}
+                                </div>
+                              )}
+                              <span className="font-medium">{a.symbol}</span>
+                              <span className="text-muted-foreground">- {a.name}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
