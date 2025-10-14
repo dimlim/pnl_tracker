@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, TrendingUp, TrendingDown, Wallet, Plus } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
+import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 
 export default function PortfolioDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -71,12 +72,7 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        <Button asChild>
-          <Link href="/dashboard/transactions">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Transaction
-          </Link>
-        </Button>
+        <AddTransactionDialog portfolioId={id} />
       </div>
 
       {/* Stats Cards */}
