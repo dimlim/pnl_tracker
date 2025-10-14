@@ -1,32 +1,28 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 const COINGECKO_API = 'https://api.coingecko.com/api/v3'
 
 export async function GET() {
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              )
-            } catch {
-              // Ignore
-            }
-          },
-        },
-      }
-    )
+    // Use anon key since RLS is disabled for assets table
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    if (!anonKey) {
+      return NextResponse.json(
+        { error: 'SUPABASE_ANON_KEY not configured' },
+        { status: 500 }
+      )
+    }
+    
+    // Create client with anon key (RLS is disabled for assets)
+    const supabase = createClient(supabaseUrl, anonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
 
     const allCoins = []
     const perPage = 250
@@ -62,16 +58,22 @@ export async function GET() {
     // Insert or update coins in database
     let inserted = 0
     let updated = 0
-    let errors = 0
+    const errorDetails: string[] = []
 
     for (const coin of allCoins) {
       try {
         // Check if coin exists
-        const { data: existing } = await supabase
+        const { data: existing, error: selectError } = await supabase
           .from('assets')
           .select('id')
           .eq('coingecko_id', coin.id)
-          .single()
+          .maybeSingle()
+
+        if (selectError) {
+          console.error(`Select error for ${coin.symbol}:`, selectError)
+          errorDetails.push(`${coin.symbol}: select failed - ${selectError.message}`)
+          continue
+        }
 
         const assetData = {
           symbol: coin.symbol.toUpperCase(),
@@ -93,7 +95,7 @@ export async function GET() {
 
           if (error) {
             console.error(`Failed to update ${coin.symbol}:`, error)
-            errors++
+            errorDetails.push(`${coin.symbol}: update failed - ${error.message}`)
           } else {
             updated++
           }
@@ -105,14 +107,14 @@ export async function GET() {
 
           if (error) {
             console.error(`Failed to insert ${coin.symbol}:`, error)
-            errors++
+            errorDetails.push(`${coin.symbol}: insert failed - ${error.message}`)
           } else {
             inserted++
           }
         }
       } catch (error) {
         console.error(`Error processing ${coin.symbol}:`, error)
-        errors++
+        errorDetails.push(`${coin.symbol}: exception - ${String(error)}`)
       }
     }
 
@@ -121,7 +123,8 @@ export async function GET() {
       total: allCoins.length,
       inserted,
       updated,
-      errors,
+      errors: errorDetails.length,
+      errorDetails: errorDetails.slice(0, 10), // First 10 errors
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
