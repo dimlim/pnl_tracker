@@ -74,9 +74,18 @@ export async function GET(request: Request) {
 
       console.log(`Fetching ${days} days of history for ${asset.symbol} (${coingeckoId})...`)
 
+      // Determine interval based on days
+      // CoinGecko intervals: minutely (1-2 days), hourly (3-90 days), daily (91+ days)
+      let interval = 'daily'
+      if (days <= 2) {
+        interval = 'minutely' // Every 5 minutes for 1-2 days
+      } else if (days <= 90) {
+        interval = 'hourly' // Hourly for 3-90 days
+      }
+
       // Fetch historical data from CoinGecko
       const response = await fetch(
-        `${COINGECKO_API}/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${days}&interval=daily`
+        `${COINGECKO_API}/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${days}${interval !== 'daily' ? '' : '&interval=daily'}`
       )
 
       if (!response.ok) {

@@ -23,6 +23,7 @@ import { PriceChart } from '@/components/charts/price-chart'
 import { SeedPricesButton } from '@/components/admin/seed-prices-button'
 import { TransactionFilters, type FilterState } from '@/components/transactions/transaction-filters'
 import { exportTransactionsToExcel } from '@/lib/export'
+import { AddAssetTransactionDialog } from '@/components/transactions/add-asset-transaction-dialog'
 
 export default function AssetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -139,6 +140,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
             </div>
           </div>
         </div>
+        
+        <AddAssetTransactionDialog assetId={assetId} assetSymbol={asset.symbol} />
       </div>
 
       {/* Price Overview */}
