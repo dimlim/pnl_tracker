@@ -18,7 +18,13 @@ import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
-  const { data: dashboardStats, isLoading: statsLoading } = trpc.dashboard.getStats.useQuery()
+  const { data: dashboardStats, isLoading: statsLoading, error: statsError } = trpc.dashboard.getStats.useQuery()
+
+  console.log('[CLIENT] Dashboard Stats:', {
+    data: dashboardStats,
+    loading: statsLoading,
+    error: statsError,
+  })
 
   const mockStats = {
     totalValue: dashboardStats?.totalValue ?? 0,
