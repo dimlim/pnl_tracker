@@ -315,9 +315,17 @@ export default function TransactionsPage() {
                     className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                        {getTxIcon(tx.type)}
-                      </div>
+                      {tx.assets.icon_url ? (
+                        <img 
+                          src={tx.assets.icon_url} 
+                          alt={tx.assets.symbol} 
+                          className="w-10 h-10 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                          <span className="text-sm font-bold">{tx.assets.symbol.slice(0, 2)}</span>
+                        </div>
+                      )}
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{tx.assets.symbol}</span>

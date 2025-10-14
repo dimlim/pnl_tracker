@@ -219,19 +219,27 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
                   className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={cn(
-                      'w-8 h-8 rounded-full flex items-center justify-center',
-                      tx.type === 'buy' || tx.type === 'transfer_in' ? 'bg-profit/20' : 'bg-loss/20'
-                    )}>
-                      {tx.type === 'buy' || tx.type === 'transfer_in' ? (
-                        <TrendingUp className="w-4 h-4 text-profit" />
-                      ) : (
-                        <TrendingDown className="w-4 h-4 text-loss" />
-                      )}
-                    </div>
+                    {tx.assets.icon_url ? (
+                      <img 
+                        src={tx.assets.icon_url} 
+                        alt={tx.assets.symbol} 
+                        className="w-8 h-8 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                        <span className="text-xs font-bold">{tx.assets.symbol.slice(0, 2)}</span>
+                      </div>
+                    )}
                     <div>
-                      <div className="text-sm font-medium">
-                        {tx.assets.symbol} • {tx.type.toUpperCase()}
+                      <div className="text-sm font-medium flex items-center gap-2">
+                        <span>{tx.assets.symbol}</span>
+                        <span className="text-muted-foreground">•</span>
+                        <span className={cn(
+                          'text-xs',
+                          tx.type === 'buy' || tx.type === 'transfer_in' ? 'text-profit' : 'text-loss'
+                        )}>
+                          {tx.type.toUpperCase()}
+                        </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {format(new Date(tx.timestamp), 'MMM dd, yyyy')}
