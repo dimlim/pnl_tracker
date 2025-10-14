@@ -41,6 +41,17 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const { data: asset, isLoading: assetLoading } = trpc.assets.getById.useQuery({ id: assetId })
   const { data: assetStats, isLoading: statsLoading } = trpc.assets.getStats.useQuery({ id: assetId })
   
+  const utils = trpc.useUtils()
+  const bulkDeleteMutation = trpc.transactions.bulkDelete.useMutation({
+    onSuccess: () => {
+      utils.transactions.list.invalidate()
+      utils.assets.getUserTransactions.invalidate()
+      utils.assets.getStats.invalidate()
+      setSelectedTransactions([])
+      setIsSelectionMode(false)
+    },
+  })
+  
   const periodToDays: Record<typeof chartPeriod, number> = {
     '1h': 1,
     '4h': 1,
@@ -476,18 +487,30 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     >
                       Cancel
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (filteredTransactions) {
+                          const allIds = filteredTransactions.map((tx: any) => tx.id)
+                          setSelectedTransactions(allIds)
+                        }
+                      }}
+                    >
+                      Select All
+                    </Button>
                     {selectedTransactions.length > 0 && (
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={async () => {
-                          if (confirm(`Delete ${selectedTransactions.length} transaction(s)?`)) {
-                            // TODO: Implement bulk delete
-                            console.log('Bulk delete:', selectedTransactions)
+                        onClick={() => {
+                          if (window.confirm(`Delete ${selectedTransactions.length} transaction(s)? This action cannot be undone.`)) {
+                            bulkDeleteMutation.mutate({ ids: selectedTransactions })
                           }
                         }}
+                        disabled={bulkDeleteMutation.isPending}
                       >
-                        Delete ({selectedTransactions.length})
+                        {bulkDeleteMutation.isPending ? 'Deleting...' : `Delete (${selectedTransactions.length})`}
                       </Button>
                     )}
                   </>
