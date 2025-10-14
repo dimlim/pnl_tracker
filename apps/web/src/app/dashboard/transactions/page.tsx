@@ -342,14 +342,16 @@ export default function TransactionsPage() {
                         )}
                       </div>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => deleteTransaction.mutate({ id: tx.id })}
-                      >
-                        <Trash2 className="w-4 h-4 text-loss" />
-                      </Button>
+                      {tx.id && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => deleteTransaction.mutate({ id: tx.id! })}
+                        >
+                          <Trash2 className="w-4 h-4 text-loss" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
