@@ -70,6 +70,20 @@ export const appRouter = t.router({
     get: protectedProcedure
       .input(z.object({ id: z.string().uuid() }))
       .query(async ({ ctx, input }) => {
+        const { data, error} = await ctx.supabase
+          .from('portfolios')
+          .select('*')
+          .eq('id', input.id)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (error) throw new TRPCError({ code: 'NOT_FOUND', message: 'Portfolio not found' })
+        return data as Portfolio
+      }),
+
+    getById: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ ctx, input }) => {
         const { data, error } = await ctx.supabase
           .from('portfolios')
           .select('*')
@@ -141,6 +155,22 @@ export const appRouter = t.router({
 
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
         return { success: true }
+      }),
+  }),
+
+  // Positions
+  positions: t.router({
+    list: protectedProcedure
+      .input(z.object({ portfolio_id: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const { data, error } = await ctx.supabase
+          .from('portfolio_positions')
+          .select('*, assets(*)')
+          .eq('portfolio_id', input.portfolio_id)
+          .order('quantity', { ascending: false })
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data
       }),
   }),
 
