@@ -99,16 +99,16 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
       const data = await response.json()
       
       if (data.success && data.asset) {
-        // Invalidate and refetch assets list to ensure new asset is available
-        await utils.assets.list.invalidate()
-        await utils.assets.list.refetch()
+        // Update the cache with the new asset
+        const currentAssets = utils.assets.list.getData() || []
+        utils.assets.list.setData(undefined, [...currentAssets, data.asset])
         
-        // Small delay to ensure state update
-        setTimeout(() => {
-          setSelectedAsset(data.asset.id.toString())
-          setSearchQuery('')
-          setCoingeckoResults([])
-        }, 100)
+        // Select the new asset immediately
+        setSelectedAsset(data.asset.id.toString())
+        setSearchQuery('')
+        setCoingeckoResults([])
+      } else {
+        console.error('Failed to add asset:', data)
       }
     } catch (error) {
       console.error('Add asset error:', error)
