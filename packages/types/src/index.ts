@@ -62,6 +62,10 @@ export type Asset = {
   symbol: string
   name: string
   icon_url?: string
+  current_price?: number
+  price_change_24h?: number
+  market_cap?: number
+  last_updated?: Date | string
 }
 
 // Price data
