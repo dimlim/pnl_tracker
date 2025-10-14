@@ -314,6 +314,12 @@ export default function DashboardPage() {
       <AddTransactionDialog 
         open={isTransactionDialogOpen} 
         onOpenChange={setIsTransactionDialogOpen}
+        trigger={
+          <Button>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Transaction
+          </Button>
+        }
       />
     </div>
   )
