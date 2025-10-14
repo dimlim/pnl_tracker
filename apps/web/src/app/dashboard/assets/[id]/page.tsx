@@ -19,6 +19,7 @@ import {
 import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { PriceChart } from '@/components/charts/price-chart'
+import { SeedPricesButton } from '@/components/admin/seed-prices-button'
 
 export default function AssetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -220,8 +221,11 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
         {/* Price Chart Tab */}
         <TabsContent value="chart" className="space-y-4">
           <Card className="glass-strong border-white/10">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>30-Day Price Chart</CardTitle>
+              {(!priceHistory || priceHistory.length === 0) && (
+                <SeedPricesButton assetId={assetId} />
+              )}
             </CardHeader>
             <CardContent>
               {historyLoading ? (
@@ -233,8 +237,9 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                   <PriceChart data={priceHistory} height={400} />
                 </div>
               ) : (
-                <div className="h-[400px] flex items-center justify-center">
+                <div className="h-[400px] flex flex-col items-center justify-center gap-4">
                   <p className="text-muted-foreground">No price history available</p>
+                  <p className="text-sm text-muted-foreground">Click the button above to seed test data</p>
                 </div>
               )}
             </CardContent>
