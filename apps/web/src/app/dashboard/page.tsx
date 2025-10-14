@@ -19,13 +19,20 @@ import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: topAssets } = trpc.assets.list.useQuery()
-  const { data: allTransactions } = trpc.transactions.list.useQuery({})
 
-  // Fetch positions for all portfolios
+  // Fetch positions and transactions for all portfolios
   const portfolioIds = portfolios?.map((p: any) => p.id) || []
   const positionsQueries = portfolioIds.map(id => 
     trpc.positions.list.useQuery({ portfolio_id: id }, { enabled: !!id })
   )
+  const transactionsQueries = portfolioIds.map(id =>
+    trpc.transactions.list.useQuery({ portfolio_id: id }, { enabled: !!id })
+  )
+
+  // Combine all transactions
+  const allTransactions = transactionsQueries
+    .flatMap(query => query.data || [])
+    .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
   // Calculate real stats from all portfolios
   let totalValue = 0
