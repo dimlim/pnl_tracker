@@ -181,12 +181,7 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
           ) : (
             <div className="text-center py-12">
               <p className="text-muted-foreground mb-4">No positions yet</p>
-              <Button asChild>
-                <Link href="/dashboard/transactions">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add First Transaction
-                </Link>
-              </Button>
+              <AddTransactionDialog portfolioId={id} />
             </div>
           )}
         </CardContent>
