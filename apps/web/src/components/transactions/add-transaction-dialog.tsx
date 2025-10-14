@@ -103,7 +103,7 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
         await utils.assets.list.invalidate()
         // Select the new asset
         setSelectedAsset(data.asset.id.toString())
-        setSearchQuery(data.asset.symbol)
+        setSearchQuery('')
         setCoingeckoResults([])
       }
     } catch (error) {
