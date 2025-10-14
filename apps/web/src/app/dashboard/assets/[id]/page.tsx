@@ -25,7 +25,7 @@ import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { PriceChart } from '@/components/charts/price-chart'
 import { SeedPricesButton } from '@/components/admin/seed-prices-button'
-import { TransactionFilters, type FilterState } from '@/components/transactions/transaction-filters'
+import { TransactionFilters as TransactionFiltersNew, type FilterState, type SortState } from '@/components/transactions/transaction-filters-new'
 import { exportTransactionsToExcel } from '@/lib/export'
 import { AddAssetTransactionDialog } from '@/components/transactions/add-asset-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
@@ -35,6 +35,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const assetId = parseInt(id)
   const [chartPeriod, setChartPeriod] = useState<'1h' | '4h' | '24h' | '7d' | '30d' | 'all'>('24h')
   const [filters, setFilters] = useState<FilterState>({ type: [] })
+  const [sort, setSort] = useState<SortState>({ field: 'date', direction: 'desc' })
   const [selectedTransactions, setSelectedTransactions] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   
@@ -131,6 +132,31 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
     
     return true
   }) || []
+
+  // Sort transactions
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
+    let comparison = 0
+    
+    switch (sort.field) {
+      case 'date':
+        comparison = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        break
+      case 'amount':
+        comparison = (a.quantity * a.price) - (b.quantity * b.price)
+        break
+      case 'type':
+        comparison = a.type.localeCompare(b.type)
+        break
+      case 'roi':
+        // ROI only for buy transactions
+        const roiA = a.type === 'buy' ? ((currentPrice - a.price) / a.price) * 100 : 0
+        const roiB = b.type === 'buy' ? ((currentPrice - b.price) / b.price) * 100 : 0
+        comparison = roiA - roiB
+        break
+    }
+    
+    return sort.direction === 'asc' ? comparison : -comparison
+  })
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -454,8 +480,9 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-4">
-          <TransactionFilters
+          <TransactionFiltersNew
             onFilterChange={setFilters}
+            onSortChange={setSort}
             onExport={() => {
               if (userTransactions) {
                 exportTransactionsToExcel(userTransactions, `${asset.symbol}-transactions.csv`)
@@ -491,8 +518,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        if (filteredTransactions) {
-                          const allIds = filteredTransactions.map((tx: any) => tx.id)
+                        if (sortedTransactions) {
+                          const allIds = sortedTransactions.map((tx: any) => tx.id)
                           setSelectedTransactions(allIds)
                         }
                       }}
@@ -524,9 +551,9 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     <div key={i} className="h-20 bg-white/5 rounded animate-pulse" />
                   ))}
                 </div>
-              ) : filteredTransactions && filteredTransactions.length > 0 ? (
+              ) : sortedTransactions && sortedTransactions.length > 0 ? (
                 <div className="space-y-2">
-                  {filteredTransactions.map((tx: any) => {
+                  {sortedTransactions.map((tx: any) => {
                     const txValue = tx.quantity * tx.price
                     const currentValue = tx.quantity * currentPrice
                     const pnl = currentValue - txValue
