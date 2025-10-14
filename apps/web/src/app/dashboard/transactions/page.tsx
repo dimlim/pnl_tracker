@@ -92,6 +92,11 @@ export default function TransactionsPage() {
         <AddTransactionDialog 
           open={isTransactionDialogOpen}
           onOpenChange={setIsTransactionDialogOpen}
+          trigger={
+            <Button>
+              Add Transaction
+            </Button>
+          }
         />
       </div>
 

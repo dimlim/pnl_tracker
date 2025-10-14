@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Loader2, Search } from 'lucide-react'
+import { Plus, Loader2, Search, X } from 'lucide-react'
 
 interface AddTransactionDialogProps {
   portfolioId?: string
@@ -144,20 +144,25 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
+      {!trigger && !externalOpen && (
+        <DialogTrigger asChild>
           <Button>
             <Plus className="w-4 h-4 mr-2" />
             Add Transaction
           </Button>
-        )}
-      </DialogTrigger>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Add Transaction</DialogTitle>
             <DialogDescription>
-              Record a new transaction for this portfolio
+              {portfolioId ? 'Record a new transaction for this portfolio' : 'Record a new crypto transaction'}
             </DialogDescription>
           </DialogHeader>
 
@@ -197,16 +202,41 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
 
             <div className="space-y-2">
               <Label htmlFor="asset">Asset</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                <Input
-                  placeholder="Type to search crypto (e.g. BTC, Bitcoin)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                  required
-                />
-              </div>
+              {selectedAsset ? (
+                <div className="flex items-center gap-2 p-3 border border-white/10 rounded-lg bg-white/5">
+                  {assets?.find((a: any) => a.id.toString() === selectedAsset)?.icon_url ? (
+                    <img 
+                      src={assets?.find((a: any) => a.id.toString() === selectedAsset)?.icon_url} 
+                      alt="icon" 
+                      className="w-6 h-6 rounded-full" 
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                      {assets?.find((a: any) => a.id.toString() === selectedAsset)?.symbol[0]}
+                    </div>
+                  )}
+                  <span className="font-medium flex-1">
+                    {assets?.find((a: any) => a.id.toString() === selectedAsset)?.symbol}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAsset('')}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                  <Input
+                    placeholder="Type to search crypto (e.g. BTC, Bitcoin)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              )}
               {searchQuery && (filteredLocalAssets.length > 0 || coingeckoResults.length > 0 || isSearching) && (
                 <div className="max-h-[300px] overflow-y-auto border border-white/10 rounded-lg bg-background">
                   {/* Local assets */}
@@ -221,7 +251,7 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
                           type="button"
                           onClick={() => {
                             setSelectedAsset(a.id.toString())
-                            setSearchQuery(a.symbol)
+                            setSearchQuery('')
                           }}
                           className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors text-left"
                         >
