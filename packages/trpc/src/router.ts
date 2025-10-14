@@ -536,6 +536,17 @@ export const appRouter = t.router({
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
+        // Verify ownership before delete
+        const { data: transaction } = await ctx.supabase
+          .from('transactions')
+          .select('portfolio_id, portfolios!inner(user_id)')
+          .eq('id', input.id)
+          .single()
+
+        if (!transaction || (transaction as any).portfolios.user_id !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Transaction not found' })
+        }
+
         const { error } = await ctx.supabase
           .from('transactions')
           .delete()
@@ -543,6 +554,36 @@ export const appRouter = t.router({
 
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
         return { success: true }
+      }),
+
+    bulkDelete: protectedProcedure
+      .input(z.object({ ids: z.array(z.number()) }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.ids.length === 0) {
+          return { success: true, count: 0 }
+        }
+
+        // Verify all transactions belong to user
+        const { data: transactions } = await ctx.supabase
+          .from('transactions')
+          .select('id, portfolio_id, portfolios!inner(user_id)')
+          .in('id', input.ids)
+
+        const userTransactionIds = transactions
+          ?.filter((tx: any) => tx.portfolios.user_id === ctx.user.id)
+          .map((tx: any) => tx.id) || []
+
+        if (userTransactionIds.length === 0) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'No valid transactions to delete' })
+        }
+
+        const { error, count } = await ctx.supabase
+          .from('transactions')
+          .delete()
+          .in('id', userTransactionIds)
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return { success: true, count: count || 0 }
       }),
   }),
 

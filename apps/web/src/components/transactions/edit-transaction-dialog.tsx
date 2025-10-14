@@ -68,10 +68,15 @@ export function EditTransactionDialog({ transaction, trigger }: EditTransactionD
     })
   }
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
-      deleteTransaction.mutate({ id: transaction.id })
-    }
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmDelete = () => {
+    deleteTransaction.mutate({ id: transaction.id })
+    setShowDeleteConfirm(false)
   }
 
   return (
@@ -197,6 +202,71 @@ export function EditTransactionDialog({ transaction, trigger }: EditTransactionD
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-card border border-destructive/50 rounded-lg p-6 max-w-md w-full space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Delete Transaction?</h3>
+                <p className="text-sm text-muted-foreground">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <div className="bg-muted/50 rounded p-3 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type:</span>
+                <span className="font-medium uppercase">{transaction.type}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Quantity:</span>
+                <span className="font-medium">{transaction.quantity}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Price:</span>
+                <span className="font-medium">${transaction.price}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total:</span>
+                <span className="font-medium">${(transaction.quantity * transaction.price).toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleteTransaction.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={confirmDelete}
+                disabled={deleteTransaction.isPending}
+              >
+                {deleteTransaction.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Dialog>
   )
 }
