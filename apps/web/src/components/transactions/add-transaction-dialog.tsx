@@ -52,7 +52,7 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
     e.preventDefault()
     createTransaction.mutate({
       portfolio_id: portfolioId,
-      asset_id: selectedAsset,
+      asset_id: parseInt(selectedAsset),
       type,
       quantity: parseFloat(quantity),
       price: parseFloat(price),
