@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
+import { PriceChart } from '@/components/charts/price-chart'
 
 export default function AssetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -228,9 +229,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500" />
                 </div>
               ) : priceHistory && priceHistory.length > 0 ? (
-                <div className="h-[400px] flex items-center justify-center">
-                  <p className="text-muted-foreground">Chart visualization coming soon...</p>
-                  {/* TODO: Integrate chart library like recharts or lightweight-charts */}
+                <div className="h-[400px]">
+                  <PriceChart data={priceHistory} height={400} />
                 </div>
               ) : (
                 <div className="h-[400px] flex items-center justify-center">
