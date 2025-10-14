@@ -21,11 +21,14 @@ import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { PriceChart } from '@/components/charts/price-chart'
 import { SeedPricesButton } from '@/components/admin/seed-prices-button'
+import { TransactionFilters, type FilterState } from '@/components/transactions/transaction-filters'
+import { exportTransactionsToExcel } from '@/lib/export'
 
 export default function AssetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const assetId = parseInt(id)
   const [chartPeriod, setChartPeriod] = useState<'1h' | '4h' | '24h' | '7d' | '30d' | 'all'>('24h')
+  const [filters, setFilters] = useState<FilterState>({ type: [] })
   
   const { data: asset, isLoading: assetLoading } = trpc.assets.getById.useQuery({ id: assetId })
   const { data: assetStats, isLoading: statsLoading } = trpc.assets.getStats.useQuery({ id: assetId })
@@ -78,6 +81,33 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const realizedPnL = assetStats?.realizedPnL || 0
   const unrealizedPnL = assetStats?.unrealizedPnL || 0
   const breakEvenPrice = assetStats?.breakEvenPrice || 0
+  
+  // Filter transactions
+  const filteredTransactions = userTransactions?.filter(tx => {
+    // Type filter
+    if (filters.type.length > 0 && !filters.type.includes(tx.type)) {
+      return false
+    }
+    
+    // Date filter
+    if (filters.dateFrom && new Date(tx.timestamp) < filters.dateFrom) {
+      return false
+    }
+    if (filters.dateTo && new Date(tx.timestamp) > filters.dateTo) {
+      return false
+    }
+    
+    // Amount filter
+    const amount = tx.quantity * tx.price
+    if (filters.minAmount !== undefined && amount < filters.minAmount) {
+      return false
+    }
+    if (filters.maxAmount !== undefined && amount > filters.maxAmount) {
+      return false
+    }
+    
+    return true
+  }) || []
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -325,6 +355,15 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
         {/* Transactions Tab */}
         <TabsContent value="transactions" className="space-y-4">
+          <TransactionFilters
+            onFilterChange={setFilters}
+            onExport={() => {
+              if (userTransactions) {
+                exportTransactionsToExcel(userTransactions, `${asset.symbol}-transactions.csv`)
+              }
+            }}
+          />
+          
           <Card className="glass-strong border-white/10">
             <CardHeader>
               <CardTitle>Your Transaction History</CardTitle>
@@ -336,9 +375,9 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     <div key={i} className="h-20 bg-white/5 rounded animate-pulse" />
                   ))}
                 </div>
-              ) : userTransactions && userTransactions.length > 0 ? (
+              ) : filteredTransactions && filteredTransactions.length > 0 ? (
                 <div className="space-y-2">
-                  {userTransactions.map((tx: any) => {
+                  {filteredTransactions.map((tx: any) => {
                     const txValue = tx.quantity * tx.price
                     const currentValue = tx.quantity * currentPrice
                     const pnl = currentValue - txValue
@@ -418,6 +457,19 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                       </div>
                     )
                   })}
+                </div>
+              ) : userTransactions && userTransactions.length > 0 ? (
+                <div className="text-center py-12">
+                  <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No transactions match your filters</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setFilters({ type: [] })}
+                    className="mt-4"
+                  >
+                    Clear Filters
+                  </Button>
                 </div>
               ) : (
                 <div className="text-center py-12">

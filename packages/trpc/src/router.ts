@@ -647,6 +647,43 @@ export const appRouter = t.router({
       }
     }),
   }),
+
+  // Export all user transactions
+  export: t.router({
+    allTransactions: protectedProcedure
+      .query(async ({ ctx }) => {
+        // Get all user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id, name')
+          .eq('user_id', ctx.user.id)
+
+        if (!portfolios || portfolios.length === 0) {
+          return []
+        }
+
+        const portfolioIds = portfolios.map(p => p.id)
+
+        // Get all transactions with asset and portfolio info
+        const { data: transactions, error } = await ctx.supabase
+          .from('transactions')
+          .select(`
+            *,
+            assets (
+              symbol,
+              name
+            ),
+            portfolios (
+              name
+            )
+          `)
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: false })
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return transactions || []
+      }),
+  }),
 })
 
 export type AppRouter = typeof appRouter
