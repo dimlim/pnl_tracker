@@ -164,7 +164,7 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {topAssets?.slice(0, 5).map((asset) => (
+            {topAssets?.slice(0, 5).map((asset: any) => (
               <div key={asset.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
                 <div className="flex items-center gap-3">
                   {asset.icon_url ? (
@@ -184,14 +184,14 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium tabular-nums">{formatCurrency(asset.current_price)}</p>
-                  <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.price_change_24h)}`}>
-                    {asset.price_change_24h >= 0 ? (
+                  <p className="font-medium tabular-nums">{formatCurrency(asset.current_price || 0)}</p>
+                  <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.price_change_24h || 0)}`}>
+                    {(asset.price_change_24h || 0) >= 0 ? (
                       <ArrowUpRight className="w-3 h-3" />
                     ) : (
                       <ArrowDownRight className="w-3 h-3" />
                     )}
-                    {formatPercentage(Math.abs(asset.price_change_24h))}
+                    {formatPercentage(Math.abs(asset.price_change_24h || 0))}
                   </p>
                 </div>
               </div>
