@@ -85,27 +85,33 @@ export async function GET() {
 
     const prices = await response.json()
 
+    console.log('Fetched prices from CoinGecko:', prices)
+
     // Update prices in database
     const updates = []
     for (const asset of assets) {
       const coingeckoId = asset.coingecko_id || SYMBOL_TO_COINGECKO_ID[asset.symbol]
       if (coingeckoId && prices[coingeckoId]) {
         const priceData = prices[coingeckoId]
-        updates.push(
-          supabase
-            .from('assets')
-            .update({
-              current_price: priceData.usd,
-              price_change_24h: priceData.usd_24h_change || 0,
-              market_cap: priceData.usd_market_cap || 0,
-              last_updated: new Date().toISOString(),
-            })
-            .eq('id', asset.id)
-        )
+        console.log(`Updating ${asset.symbol} (${coingeckoId}): $${priceData.usd}`)
+        
+        const { error: updateError } = await supabase
+          .from('assets')
+          .update({
+            current_price: priceData.usd,
+            price_change_24h: priceData.usd_24h_change || 0,
+            market_cap: priceData.usd_market_cap || 0,
+            last_updated: new Date().toISOString(),
+          })
+          .eq('id', asset.id)
+        
+        if (updateError) {
+          console.error(`Failed to update ${asset.symbol}:`, updateError)
+        } else {
+          updates.push(asset.symbol)
+        }
       }
     }
-
-    await Promise.all(updates)
 
     return NextResponse.json({
       success: true,
