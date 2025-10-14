@@ -18,18 +18,29 @@ import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
-  const { data: dashboardStats } = trpc.dashboard.getStats.useQuery()
+  const { data: dashboardStats, isLoading: statsLoading } = trpc.dashboard.getStats.useQuery()
 
   const mockStats = {
-    totalValue: dashboardStats?.totalValue || 0,
-    totalPnL: dashboardStats?.totalPnL || 0,
-    pnlPercentage: dashboardStats?.pnlPercentage || 0,
-    portfolioCount: dashboardStats?.portfolioCount || 0,
+    totalValue: dashboardStats?.totalValue ?? 0,
+    totalPnL: dashboardStats?.totalPnL ?? 0,
+    pnlPercentage: dashboardStats?.pnlPercentage ?? 0,
+    portfolioCount: dashboardStats?.portfolioCount ?? 0,
     dayChange: 0,
   }
 
-  const allTransactions = dashboardStats?.recentTransactions || []
-  const topPerformers = dashboardStats?.topPerformers || []
+  const allTransactions = dashboardStats?.recentTransactions ?? []
+  const topPerformers = dashboardStats?.topPerformers ?? []
+
+  if (isLoading || statsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
