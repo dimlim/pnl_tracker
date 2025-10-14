@@ -1,0 +1,26 @@
+{
+  "name": "crypto-pnl-tracker",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "supabase db reset --db-url $SUPABASE_DB_URL && supabase db push",
+    "db:seed": "node supabase/seeds/seed.mjs",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.3",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "vitest": "^2.0.5",
+    "@types/node": "^22.5.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

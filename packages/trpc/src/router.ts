@@ -1,0 +1,256 @@
+import { initTRPC, TRPCError } from '@trpc/server'
+import { z } from 'zod'
+import type { Context } from './context'
+import type { Portfolio, Transaction, Asset } from '@crypto-pnl/types'
+import { computePnL } from '@crypto-pnl/pnl-engine'
+import superjson from 'superjson'
+
+const t = initTRPC.context<Context>().create({
+  transformer: superjson,
+})
+
+// Middleware to check if user is authenticated
+const isAuthed = t.middleware(({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' })
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user,
+    },
+  })
+})
+
+const protectedProcedure = t.procedure.use(isAuthed)
+
+export const appRouter = t.router({
+  // Health check
+  health: t.procedure.query(() => ({ ok: true, timestamp: new Date() })),
+
+  // Assets
+  assets: t.router({
+    list: t.procedure.query(async ({ ctx }) => {
+      const { data, error } = await ctx.supabase
+        .from('assets')
+        .select('*')
+        .order('symbol', { ascending: true })
+
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return data as Asset[]
+    }),
+
+    search: t.procedure
+      .input(z.object({ query: z.string() }))
+      .query(async ({ ctx, input }) => {
+        const { data, error } = await ctx.supabase
+          .from('assets')
+          .select('*')
+          .or(`symbol.ilike.%${input.query}%,name.ilike.%${input.query}%`)
+          .limit(10)
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as Asset[]
+      }),
+  }),
+
+  // Portfolios
+  portfolios: t.router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      const { data, error } = await ctx.supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', ctx.user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      return data as Portfolio[]
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        const { data, error } = await ctx.supabase
+          .from('portfolios')
+          .select('*')
+          .eq('id', input.id)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (error) throw new TRPCError({ code: 'NOT_FOUND', message: 'Portfolio not found' })
+        return data as Portfolio
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().min(1).max(100),
+          base_currency: z.string().default('USD'),
+          pnl_method: z.enum(['fifo', 'lifo', 'avg']),
+          include_fees: z.boolean().default(true),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { data, error } = await ctx.supabase
+          .from('portfolios')
+          .insert({
+            user_id: ctx.user.id,
+            name: input.name,
+            base_currency: input.base_currency,
+            pnl_method: input.pnl_method,
+            include_fees: input.include_fees,
+          })
+          .select()
+          .single()
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as Portfolio
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string().min(1).max(100).optional(),
+          pnl_method: z.enum(['fifo', 'lifo', 'avg']).optional(),
+          include_fees: z.boolean().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...updates } = input
+        const { data, error } = await ctx.supabase
+          .from('portfolios')
+          .update(updates)
+          .eq('id', id)
+          .eq('user_id', ctx.user.id)
+          .select()
+          .single()
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as Portfolio
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        const { error } = await ctx.supabase
+          .from('portfolios')
+          .delete()
+          .eq('id', input.id)
+          .eq('user_id', ctx.user.id)
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return { success: true }
+      }),
+  }),
+
+  // Transactions
+  transactions: t.router({
+    list: protectedProcedure
+      .input(z.object({ portfolio_id: z.string().uuid() }))
+      .query(async ({ ctx, input }) => {
+        const { data, error } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(*)')
+          .eq('portfolio_id', input.portfolio_id)
+          .order('timestamp', { ascending: false })
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as (Transaction & { assets: Asset })[]
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          portfolio_id: z.string().uuid(),
+          asset_id: z.number(),
+          type: z.enum(['buy', 'sell', 'transfer_in', 'transfer_out', 'deposit', 'withdraw', 'airdrop']),
+          quantity: z.number().positive(),
+          price: z.number().nonnegative(),
+          fee: z.number().nonnegative().optional(),
+          timestamp: z.string().or(z.date()),
+          note: z.string().optional(),
+          tx_hash: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        // Verify portfolio ownership
+        const { data: portfolio } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('id', input.portfolio_id)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (!portfolio) throw new TRPCError({ code: 'FORBIDDEN', message: 'Portfolio not found' })
+
+        const { data, error } = await ctx.supabase
+          .from('transactions')
+          .insert(input)
+          .select()
+          .single()
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as Transaction
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { error } = await ctx.supabase
+          .from('transactions')
+          .delete()
+          .eq('id', input.id)
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return { success: true }
+      }),
+  }),
+
+  // PnL calculations
+  pnl: t.router({
+    calculate: protectedProcedure
+      .input(
+        z.object({
+          portfolio_id: z.string().uuid(),
+          asset_id: z.number().optional(),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        // Get portfolio settings
+        const { data: portfolio } = await ctx.supabase
+          .from('portfolios')
+          .select('*')
+          .eq('id', input.portfolio_id)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (!portfolio) throw new TRPCError({ code: 'NOT_FOUND' })
+
+        // Get transactions
+        let query = ctx.supabase
+          .from('transactions')
+          .select('*')
+          .eq('portfolio_id', input.portfolio_id)
+
+        if (input.asset_id) {
+          query = query.eq('asset_id', input.asset_id)
+        }
+
+        const { data: transactions } = await query
+
+        if (!transactions) return { realized: 0, quantity: 0, avgPrice: 0 }
+
+        // Calculate PnL
+        const result = computePnL(
+          transactions as Transaction[],
+          portfolio.pnl_method as 'fifo' | 'lifo' | 'avg',
+          portfolio.include_fees
+        )
+
+        return result
+      }),
+  }),
+})
+
+export type AppRouter = typeof appRouter
