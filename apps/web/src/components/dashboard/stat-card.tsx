@@ -24,12 +24,12 @@ export function StatCard({
       <CardContent className="p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground font-medium">{title}</p>
-            <p className="text-3xl font-bold tabular-nums">{value}</p>
+            <p className="uppercase-label">{title}</p>
+            <p className="stat-value">{value}</p>
             {change && (
               <p
                 className={cn(
-                  'text-sm font-medium',
+                  'text-sm font-semibold font-mono tabular-nums',
                   changeType === 'positive' && 'text-profit',
                   changeType === 'negative' && 'text-loss',
                   changeType === 'neutral' && 'text-muted-foreground'

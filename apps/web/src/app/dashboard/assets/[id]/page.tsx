@@ -229,14 +229,14 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
       <div className="grid gap-6 md:grid-cols-4">
         <Card className="glass-strong border-white/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Your Holdings</CardTitle>
+            <CardTitle className="uppercase-label">Your Holdings</CardTitle>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
+            <div className="text-2xl font-bold font-mono tabular-nums">
               {formatNumber(assetStats?.totalQuantity || 0)}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1 font-mono tabular-nums">
               {formatCurrency((assetStats?.totalQuantity || 0) * currentPrice)}
             </p>
           </CardContent>
@@ -244,11 +244,11 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
 
         <Card className="glass-strong border-white/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Buy Price</CardTitle>
+            <CardTitle className="uppercase-label">Avg Buy Price</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold tabular-nums">
+            <div className="text-2xl font-bold font-mono tabular-nums">
               {formatCurrency(assetStats?.avgBuyPrice || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -261,7 +261,7 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
           <CardHeader>
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-profit" />
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total P&L</CardTitle>
+              <CardTitle className="uppercase-label">Total P&L</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -305,11 +305,11 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
             <CardHeader>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-amber-500" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Break-Even Price</CardTitle>
+                <CardTitle className="uppercase-label">Break-Even Price</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tabular-nums text-amber-500">
+              <div className="text-2xl font-bold font-mono tabular-nums text-amber-500">
                 {formatCurrency(breakEvenPrice)}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
@@ -327,12 +327,12 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Target className="w-5 h-5 text-purple-500" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Distance to ATH</CardTitle>
+                <CardTitle className="uppercase-label">Distance to ATH</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tabular-nums text-purple-500">
-                {distanceToATH.toFixed(2)}%
+              <div className="text-2xl font-bold font-mono tabular-nums text-purple-500">
+                {formatPercentage(distanceToATH)}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 ATH: {formatCurrency(athPrice)}
@@ -374,12 +374,12 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
             <CardHeader>
               <div className="flex items-center gap-2">
                 <PieChart className="w-5 h-5 text-emerald-500" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Position Size</CardTitle>
+                <CardTitle className="uppercase-label">Position Size</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold tabular-nums text-emerald-500">
-                {positionSize.toFixed(2)}%
+              <div className="text-2xl font-bold font-mono tabular-nums text-emerald-500">
+                {formatCurrency(realizedPnL + unrealizedPnL)}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 of total portfolio
