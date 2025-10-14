@@ -91,12 +91,22 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
   const handleAddAsset = async (coingeckoId: string) => {
     setIsAddingAsset(true)
     try {
+      console.log('Adding asset from CoinGecko:', coingeckoId)
       const response = await fetch('/api/crypto/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coingeckoId }),
       })
+      
+      console.log('Response status:', response.status)
       const data = await response.json()
+      console.log('Response data:', data)
+      
+      if (!response.ok) {
+        console.error('Server error:', response.status, data)
+        alert(`Failed to add asset: ${data.error || 'Server error'}`)
+        return
+      }
       
       if (data.success && data.asset) {
         // Update the cache with the new asset
@@ -107,11 +117,14 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
         setSelectedAsset(data.asset.id.toString())
         setSearchQuery('')
         setCoingeckoResults([])
+        console.log('Asset added successfully:', data.asset)
       } else {
         console.error('Failed to add asset:', data)
+        alert('Failed to add asset. Please try again.')
       }
     } catch (error) {
       console.error('Add asset error:', error)
+      alert('Network error. Please check your connection.')
     } finally {
       setIsAddingAsset(false)
     }
