@@ -18,6 +18,7 @@ import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
+  const { data: topAssets } = trpc.assets.list.useQuery()
 
   // Mock data for demo (replace with real data later)
   const mockStats = {
@@ -163,31 +164,34 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {/* Mock data - replace with real data */}
-            {[
-              { name: 'Bitcoin', symbol: 'BTC', change: 5.2, value: 45230 },
-              { name: 'Ethereum', symbol: 'ETH', change: 3.8, value: 28450 },
-              { name: 'Solana', symbol: 'SOL', change: -2.1, value: 12300 },
-            ].map((asset) => (
-              <div key={asset.symbol} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+            {topAssets?.slice(0, 5).map((asset) => (
+              <div key={asset.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold">
-                    {asset.symbol[0]}
-                  </div>
+                  {asset.icon_url ? (
+                    <img 
+                      src={asset.icon_url} 
+                      alt={asset.symbol} 
+                      className="w-10 h-10 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold">
+                      {asset.symbol[0]}
+                    </div>
+                  )}
                   <div>
                     <p className="font-medium">{asset.name}</p>
                     <p className="text-sm text-muted-foreground">{asset.symbol}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-medium tabular-nums">{formatCurrency(asset.value)}</p>
-                  <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.change)}`}>
-                    {asset.change >= 0 ? (
+                  <p className="font-medium tabular-nums">{formatCurrency(asset.current_price)}</p>
+                  <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.price_change_24h)}`}>
+                    {asset.price_change_24h >= 0 ? (
                       <ArrowUpRight className="w-3 h-3" />
                     ) : (
                       <ArrowDownRight className="w-3 h-3" />
                     )}
-                    {formatPercentage(Math.abs(asset.change))}
+                    {formatPercentage(Math.abs(asset.price_change_24h))}
                   </p>
                 </div>
               </div>
