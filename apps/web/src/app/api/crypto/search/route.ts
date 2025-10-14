@@ -115,9 +115,6 @@ export async function POST(request: NextRequest) {
         name: coin.name,
         coingecko_id: coin.id,
         icon_url: coin.image?.small || coin.image?.thumb,
-        current_price: coin.market_data?.current_price?.usd || 0,
-        ath: coin.market_data?.ath?.usd || 0,
-        ath_date: coin.market_data?.ath_date?.usd || null,
       })
       .select()
       .single()
