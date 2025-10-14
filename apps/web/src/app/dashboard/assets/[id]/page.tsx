@@ -16,7 +16,8 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownRight,
-  Clock
+  Clock,
+  Target
 } from 'lucide-react'
 import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -83,6 +84,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const realizedPnL = assetStats?.realizedPnL || 0
   const unrealizedPnL = assetStats?.unrealizedPnL || 0
   const breakEvenPrice = assetStats?.breakEvenPrice || 0
+  const athPrice = assetStats?.athPrice || 0
+  const distanceToATH = assetStats?.distanceToATH || 0
   
   // Filter transactions
   const filteredTransactions = userTransactions?.filter(tx => {
@@ -269,6 +272,31 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                 {currentPrice > breakEvenPrice 
                   ? `${formatCurrency(currentPrice - breakEvenPrice)} above break-even`
                   : `${formatCurrency(breakEvenPrice - currentPrice)} to break-even`
+                }
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {athPrice > 0 && (
+          <Card className="glass-strong border-white/10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Target className="w-5 h-5 text-purple-500" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Distance to ATH</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums text-purple-500">
+                {distanceToATH.toFixed(2)}%
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                ATH: {formatCurrency(athPrice)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {distanceToATH < 0 
+                  ? `${Math.abs(distanceToATH).toFixed(2)}% below ATH`
+                  : 'At all-time high! 🎉'
                 }
               </p>
             </CardContent>

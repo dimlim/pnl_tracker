@@ -85,9 +85,6 @@ export const appRouter = t.router({
             realizedPnL: 0,
             unrealizedPnL: 0,
             breakEvenPrice: 0,
-            avgHoldingDays: 0,
-            athPrice: 0,
-            distanceToATH: 0,
           }
         }
 
@@ -111,9 +108,6 @@ export const appRouter = t.router({
             realizedPnL: 0,
             unrealizedPnL: 0,
             breakEvenPrice: 0,
-            avgHoldingDays: 0,
-            athPrice: 0,
-            distanceToATH: 0,
           }
         }
 
@@ -157,32 +151,6 @@ export const appRouter = t.router({
         
         // Break-even price = total cost / total quantity
         const breakEvenPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0
-        
-        // Calculate average holding time for buy transactions
-        const buyTxs = txs.filter(tx => 
-          tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop'
-        )
-        let avgHoldingDays = 0
-        if (buyTxs.length > 0) {
-          const now = new Date()
-          const totalDays = buyTxs.reduce((sum, tx) => {
-            const txDate = new Date(tx.timestamp)
-            const days = Math.floor((now.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24))
-            return sum + days
-          }, 0)
-          avgHoldingDays = Math.floor(totalDays / buyTxs.length)
-        }
-        
-        // Get ATH (All-Time High) from price history
-        const { data: priceHistory } = await ctx.supabase
-          .from('price_ticks')
-          .select('price')
-          .eq('asset_id', input.id)
-          .order('price', { ascending: false })
-          .limit(1)
-        
-        const athPrice = priceHistory?.[0]?.price || currentPrice
-        const distanceToATH = athPrice > 0 ? ((currentPrice - athPrice) / athPrice) * 100 : 0
 
         return {
           totalQuantity,
@@ -193,9 +161,6 @@ export const appRouter = t.router({
           realizedPnL,
           unrealizedPnL,
           breakEvenPrice,
-          avgHoldingDays,
-          athPrice,
-          distanceToATH,
         }
       }),
 
