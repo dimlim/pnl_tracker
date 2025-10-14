@@ -19,14 +19,37 @@ import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: topAssets } = trpc.assets.list.useQuery()
+  const { data: allTransactions } = trpc.transactions.list.useQuery({})
 
-  // Calculate real stats from portfolios
+  // Fetch positions for all portfolios
+  const portfolioIds = portfolios?.map((p: any) => p.id) || []
+  const positionsQueries = portfolioIds.map(id => 
+    trpc.positions.list.useQuery({ portfolio_id: id }, { enabled: !!id })
+  )
+
+  // Calculate real stats from all portfolios
+  let totalValue = 0
+  let totalCost = 0
+
+  positionsQueries.forEach(query => {
+    if (query.data) {
+      query.data.forEach((pos: any) => {
+        const currentPrice = pos.assets?.current_price || 0
+        totalValue += pos.quantity * currentPrice
+        totalCost += pos.quantity * pos.avg_price
+      })
+    }
+  })
+
+  const totalPnL = totalValue - totalCost
+  const pnlPercentage = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
   const mockStats = {
-    totalValue: 0,
-    totalPnL: 0,
-    pnlPercentage: 0,
+    totalValue,
+    totalPnL,
+    pnlPercentage,
     portfolioCount: portfolios?.length || 0,
-    dayChange: 0,
+    dayChange: 0, // TODO: Calculate from 24h price changes
   }
 
   return (
@@ -146,13 +169,39 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">
-              <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No recent transactions</p>
-              <Button variant="outline" asChild>
-                <Link href="/dashboard/transactions/new">Add Transaction</Link>
-              </Button>
-            </div>
+            {allTransactions && allTransactions.length > 0 ? (
+              <div className="space-y-3">
+                {allTransactions.slice(0, 5).map((tx: any) => (
+                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {tx.assets?.icon_url ? (
+                        <img src={tx.assets.icon_url} alt={tx.assets.symbol} className="w-8 h-8 rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                          {tx.assets?.symbol.slice(0, 1)}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium">{tx.assets?.symbol}</div>
+                        <div className="text-sm text-muted-foreground">{tx.type.toUpperCase()}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{tx.quantity} @ {formatCurrency(tx.price)}</div>
+                      <div className="text-sm text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">No recent transactions</p>
+                <Button variant="outline" asChild>
+                  <Link href="/dashboard/portfolios">Go to Portfolios</Link>
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
