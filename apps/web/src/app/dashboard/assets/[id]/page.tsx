@@ -17,7 +17,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Clock,
-  Target
+  Target,
+  PieChart
 } from 'lucide-react'
 import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -86,6 +87,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const breakEvenPrice = assetStats?.breakEvenPrice || 0
   const athPrice = assetStats?.athPrice || 0
   const distanceToATH = assetStats?.distanceToATH || 0
+  const positionSize = assetStats?.positionSize || 0
+  const totalPortfolioValue = assetStats?.totalPortfolioValue || 0
   
   // Filter transactions
   const filteredTransactions = userTransactions?.filter(tx => {
@@ -319,6 +322,33 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                 {assetStats?.avgHoldingDays && assetStats.avgHoldingDays > 30
                   ? `~${Math.floor(assetStats.avgHoldingDays / 30)} months`
                   : 'Short-term hold'
+                }
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {positionSize > 0 && (
+          <Card className="glass-strong border-white/10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-emerald-500" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Position Size</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums text-emerald-500">
+                {positionSize.toFixed(2)}%
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                of total portfolio
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {positionSize > 20 
+                  ? '⚠️ High concentration'
+                  : positionSize > 10
+                  ? '✓ Moderate allocation'
+                  : '✓ Well diversified'
                 }
               </p>
             </CardContent>

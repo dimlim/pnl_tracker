@@ -88,6 +88,8 @@ export const appRouter = t.router({
             avgHoldingDays: 0,
             athPrice: 0,
             distanceToATH: 0,
+            positionSize: 0,
+            totalPortfolioValue: 0,
           }
         }
 
@@ -114,6 +116,8 @@ export const appRouter = t.router({
             avgHoldingDays: 0,
             athPrice: 0,
             distanceToATH: 0,
+            positionSize: 0,
+            totalPortfolioValue: 0,
           }
         }
 
@@ -183,6 +187,38 @@ export const appRouter = t.router({
         
         const athPrice = priceHistory?.[0]?.price || currentPrice
         const distanceToATH = athPrice > 0 ? ((currentPrice - athPrice) / athPrice) * 100 : 0
+        
+        // Calculate total portfolio value for position size %
+        // Get all transactions across all user's portfolios
+        const { data: allUserTxs } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(current_price)')
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: true })
+        
+        // Calculate total portfolio value
+        const portfolioPositions = new Map<number, { quantity: number, currentPrice: number }>()
+        
+        allUserTxs?.forEach((tx: any) => {
+          const existing = portfolioPositions.get(tx.asset_id) || { quantity: 0, currentPrice: tx.assets?.current_price || 0 }
+          
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            existing.quantity += tx.quantity
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            existing.quantity -= tx.quantity
+          }
+          
+          portfolioPositions.set(tx.asset_id, existing)
+        })
+        
+        let totalPortfolioValue = 0
+        portfolioPositions.forEach(pos => {
+          if (pos.quantity > 0) {
+            totalPortfolioValue += pos.quantity * pos.currentPrice
+          }
+        })
+        
+        const positionSize = totalPortfolioValue > 0 ? (currentValue / totalPortfolioValue) * 100 : 0
 
         return {
           totalQuantity,
@@ -196,6 +232,8 @@ export const appRouter = t.router({
           avgHoldingDays,
           athPrice,
           distanceToATH,
+          positionSize,
+          totalPortfolioValue,
         }
       }),
 
