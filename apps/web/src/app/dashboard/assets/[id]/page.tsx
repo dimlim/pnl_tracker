@@ -6,6 +6,7 @@ import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Checkbox } from '@/components/ui/checkbox'
 import { 
   ArrowLeft, 
   TrendingUp, 
@@ -34,6 +35,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const assetId = parseInt(id)
   const [chartPeriod, setChartPeriod] = useState<'1h' | '4h' | '24h' | '7d' | '30d' | 'all'>('24h')
   const [filters, setFilters] = useState<FilterState>({ type: [] })
+  const [selectedTransactions, setSelectedTransactions] = useState<number[]>([])
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
   
   const { data: asset, isLoading: assetLoading } = trpc.assets.getById.useQuery({ id: assetId })
   const { data: assetStats, isLoading: statsLoading } = trpc.assets.getStats.useQuery({ id: assetId })
@@ -450,8 +453,46 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
           />
           
           <Card className="glass-strong border-white/10">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Your Transaction History</CardTitle>
+              <div className="flex gap-2">
+                {!isSelectionMode ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSelectionMode(true)}
+                  >
+                    Select
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsSelectionMode(false)
+                        setSelectedTransactions([])
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    {selectedTransactions.length > 0 && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          if (confirm(`Delete ${selectedTransactions.length} transaction(s)?`)) {
+                            // TODO: Implement bulk delete
+                            console.log('Bulk delete:', selectedTransactions)
+                          }
+                        }}
+                      >
+                        Delete ({selectedTransactions.length})
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {txLoading ? (
@@ -481,9 +522,24 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                     return (
                       <div
                         key={tx.id}
-                        className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors border border-white/5"
+                        className={cn(
+                          "flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors border",
+                          selectedTransactions.includes(tx.id) ? "border-primary bg-primary/5" : "border-white/5"
+                        )}
                       >
                         <div className="flex items-center gap-4">
+                          {isSelectionMode && (
+                            <Checkbox
+                              checked={selectedTransactions.includes(tx.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedTransactions([...selectedTransactions, tx.id])
+                                } else {
+                                  setSelectedTransactions(selectedTransactions.filter(id => id !== tx.id))
+                                }
+                              }}
+                            />
+                          )}
                           <div className={cn(
                             'w-10 h-10 rounded-full flex items-center justify-center',
                             isBuy ? 'bg-profit/20 text-profit' : 'bg-loss/20 text-loss'
