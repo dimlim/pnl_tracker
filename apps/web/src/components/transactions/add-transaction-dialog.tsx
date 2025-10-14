@@ -18,12 +18,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Loader2, Search } from 'lucide-react'
 
 interface AddTransactionDialogProps {
-  portfolioId: string
+  portfolioId?: string
   trigger?: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDialogProps) {
-  const [open, setOpen] = useState(false)
+export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen, onOpenChange }: AddTransactionDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = externalOpen !== undefined ? externalOpen : internalOpen
+  const setOpen = onOpenChange || setInternalOpen
   const [type, setType] = useState<'buy' | 'sell' | 'transfer_in' | 'transfer_out'>('buy')
   const [selectedAsset, setSelectedAsset] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -34,9 +38,11 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
   const [coingeckoResults, setCoingeckoResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isAddingAsset, setIsAddingAsset] = useState(false)
+  const [selectedPortfolio, setSelectedPortfolio] = useState(portfolioId || '')
 
   const utils = trpc.useUtils()
   const { data: assets } = trpc.assets.list.useQuery()
+  const { data: portfolios } = trpc.portfolios.list.useQuery()
   
   // Filter local assets
   const filteredLocalAssets = assets
@@ -123,8 +129,10 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selectedPortfolio || !selectedAsset) return
+    
     createTransaction.mutate({
-      portfolio_id: portfolioId,
+      portfolio_id: selectedPortfolio,
       asset_id: parseInt(selectedAsset),
       type,
       quantity: parseFloat(quantity),
@@ -154,6 +162,24 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {!portfolioId && (
+              <div className="space-y-2">
+                <Label htmlFor="portfolio">Portfolio</Label>
+                <Select value={selectedPortfolio} onValueChange={setSelectedPortfolio} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select portfolio" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {portfolios?.map((p: any) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
               <Select value={type} onValueChange={(v: any) => setType(v)} required>
