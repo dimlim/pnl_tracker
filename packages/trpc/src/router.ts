@@ -163,14 +163,58 @@ export const appRouter = t.router({
     list: protectedProcedure
       .input(z.object({ portfolio_id: z.string() }))
       .query(async ({ ctx, input }) => {
-        const { data, error } = await ctx.supabase
-          .from('portfolio_positions')
+        // Get all transactions for this portfolio
+        const { data: transactions, error: txError } = await ctx.supabase
+          .from('transactions')
           .select('*, assets(*)')
           .eq('portfolio_id', input.portfolio_id)
-          .order('quantity', { ascending: false })
+          .order('timestamp', { ascending: true })
 
-        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
-        return data
+        if (txError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: txError.message })
+        if (!transactions || transactions.length === 0) return []
+
+        // Calculate positions from transactions
+        const positionsMap = new Map<number, {
+          asset_id: number
+          quantity: number
+          total_cost: number
+          assets: any
+        }>()
+
+        for (const tx of transactions) {
+          const existing = positionsMap.get(tx.asset_id) || {
+            asset_id: tx.asset_id,
+            quantity: 0,
+            total_cost: 0,
+            assets: tx.assets,
+          }
+
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            existing.quantity += tx.quantity
+            existing.total_cost += tx.quantity * tx.price + (tx.fee || 0)
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            const avgPrice = existing.quantity > 0 ? existing.total_cost / existing.quantity : 0
+            existing.quantity -= tx.quantity
+            existing.total_cost -= tx.quantity * avgPrice
+          }
+
+          positionsMap.set(tx.asset_id, existing)
+        }
+
+        // Filter out zero positions and format
+        const positions = Array.from(positionsMap.values())
+          .filter(p => p.quantity > 0.00000001)
+          .map(p => ({
+            id: p.asset_id,
+            portfolio_id: input.portfolio_id,
+            asset_id: p.asset_id,
+            quantity: p.quantity,
+            avg_price: p.total_cost / p.quantity,
+            assets: p.assets,
+          }))
+          .sort((a, b) => b.quantity * b.avg_price - a.quantity * a.avg_price)
+
+        return positions
       }),
   }),
 
