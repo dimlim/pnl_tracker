@@ -184,9 +184,9 @@ export default function DashboardPage() {
                   <div className="w-[60px]"></div>
                   <div className="min-w-[100px]"></div>
                   <div className="flex-1 grid grid-cols-4 gap-4 text-xs text-muted-foreground uppercase-label">
+                    <div>Date</div>
                     <div>Quantity</div>
                     <div>Buy Price</div>
-                    <div>Current Value</div>
                     <div className="text-right">ROI</div>
                   </div>
                 </div>
@@ -195,9 +195,9 @@ export default function DashboardPage() {
                 {allTransactions.slice(0, 5).map((tx: any) => {
                   const currentPrice = tx.assets?.current_price || 0
                   const buyPrice = tx.price
-                  const currentValue = tx.quantity * currentPrice
                   const roi = ((currentPrice - buyPrice) / buyPrice) * 100
                   const isProfit = roi >= 0
+                  const txDate = new Date(tx.timestamp)
                   
                   return (
                     <div key={tx.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-white/5">
@@ -215,9 +215,11 @@ export default function DashboardPage() {
                         <span className="font-medium text-sm">{tx.assets?.symbol}</span>
                       </div>
                       <div className="flex-1 grid grid-cols-4 gap-4 text-sm">
+                        <div className="font-medium text-muted-foreground">
+                          {txDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </div>
                         <Number className="font-medium">{formatNumber(tx.quantity)}</Number>
                         <Number className="font-medium">{formatCurrency(buyPrice)}</Number>
-                        <Number className="font-medium">{formatCurrency(currentValue)}</Number>
                         <Number className={cn("font-semibold text-right", isProfit ? "text-profit" : "text-loss")}>
                           {isProfit ? '+' : ''}{roi.toFixed(2)}%
                         </Number>
