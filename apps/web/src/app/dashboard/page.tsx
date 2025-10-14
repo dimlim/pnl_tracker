@@ -20,13 +20,13 @@ export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: topAssets } = trpc.assets.list.useQuery()
 
-  // Mock data for demo (replace with real data later)
+  // Calculate real stats from portfolios
   const mockStats = {
-    totalValue: 125430.50,
-    totalPnL: 23450.75,
-    pnlPercentage: 23.5,
+    totalValue: 0,
+    totalPnL: 0,
+    pnlPercentage: 0,
     portfolioCount: portfolios?.length || 0,
-    dayChange: 2.3,
+    dayChange: 0,
   }
 
   return (
