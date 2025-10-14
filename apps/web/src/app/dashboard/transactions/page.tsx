@@ -1,115 +1,84 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash2, TrendingUp, TrendingDown, ArrowRight, Loader2 } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Search, X, Loader2 } from 'lucide-react'
 import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
+import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { Number } from '@/components/ui/number'
 
 export default function TransactionsPage() {
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedPortfolio, setSelectedPortfolio] = useState<string>('')
-  const [selectedAsset, setSelectedAsset] = useState<string>('')
-  const [txType, setTxType] = useState<'buy' | 'sell' | 'transfer_in' | 'transfer_out'>('buy')
-  const [quantity, setQuantity] = useState('')
-  const [price, setPrice] = useState('')
-  const [fee, setFee] = useState('')
-  const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16))
-  const [note, setNote] = useState('')
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
+  const [filterType, setFilterType] = useState<string>('all')
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
 
-  const utils = trpc.useUtils()
   const { data: portfolios } = trpc.portfolios.list.useQuery()
-  const { data: assets } = trpc.assets.list.useQuery()
-  const { data: transactions, isLoading } = trpc.transactions.list.useQuery(
-    { portfolio_id: selectedPortfolio },
-    { enabled: !!selectedPortfolio }
-  )
+  const { data: allTransactions, isLoading } = trpc.transactions.listAll.useQuery()
 
-  const createTransaction = trpc.transactions.create.useMutation({
-    onSuccess: () => {
-      utils.transactions.list.invalidate()
-      setDialogOpen(false)
-      resetForm()
-    },
-  })
+  // Filter and sort transactions
+  const filteredTransactions = useMemo(() => {
+    if (!allTransactions) return []
 
-  const deleteTransaction = trpc.transactions.delete.useMutation({
-    onSuccess: () => {
-      utils.transactions.list.invalidate()
-    },
-  })
+    let filtered = allTransactions
 
-  const resetForm = () => {
-    setSelectedAsset('')
-    setTxType('buy')
-    setQuantity('')
-    setPrice('')
-    setFee('')
-    setTimestamp(new Date().toISOString().slice(0, 16))
-    setNote('')
-  }
+    // Filter by portfolio
+    if (selectedPortfolioId) {
+      filtered = filtered.filter(tx => tx.portfolio_id === selectedPortfolioId)
+    }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedPortfolio || !selectedAsset) return
+    // Filter by type
+    if (filterType !== 'all') {
+      filtered = filtered.filter(tx => tx.type === filterType)
+    }
 
-    createTransaction.mutate({
-      portfolio_id: selectedPortfolio,
-      asset_id: parseInt(selectedAsset),
-      type: txType,
-      quantity: parseFloat(quantity),
-      price: parseFloat(price),
-      fee: fee ? parseFloat(fee) : 0,
-      timestamp: new Date(timestamp).toISOString(),
-      note: note || undefined,
+    // Filter by search query
+    if (searchQuery) {
+      filtered = filtered.filter(tx => 
+        tx.assets?.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.assets?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      if (sortBy === 'date') {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      } else {
+        return (b.quantity * b.price) - (a.quantity * a.price)
+      }
     })
-  }
 
-  const getTxIcon = (type: string) => {
-    switch (type) {
-      case 'buy':
-      case 'transfer_in':
-      case 'deposit':
-      case 'airdrop':
-        return <TrendingUp className="w-4 h-4 text-profit" />
-      case 'sell':
-      case 'transfer_out':
-      case 'withdraw':
-        return <TrendingDown className="w-4 h-4 text-loss" />
-      default:
-        return <ArrowRight className="w-4 h-4 text-muted-foreground" />
-    }
-  }
+    return filtered
+  }, [allTransactions, selectedPortfolioId, filterType, searchQuery, sortBy])
 
-  const getTxColor = (type: string) => {
-    switch (type) {
-      case 'buy':
-      case 'transfer_in':
-      case 'deposit':
-      case 'airdrop':
-        return 'text-profit'
-      case 'sell':
-      case 'transfer_out':
-      case 'withdraw':
-        return 'text-loss'
-      default:
-        return 'text-muted-foreground'
-    }
-  }
+  // Calculate portfolio stats
+  const portfolioStats = useMemo(() => {
+    if (!portfolios || !allTransactions) return []
+
+    return portfolios.map(portfolio => {
+      const txs = allTransactions.filter(tx => tx.portfolio_id === portfolio.id)
+      const totalValue = txs.reduce((sum, tx) => {
+        if (tx.type === 'buy' || tx.type === 'transfer_in') {
+          return sum + (tx.quantity * tx.price)
+        }
+        return sum
+      }, 0)
+
+      return {
+        ...portfolio,
+        transactionCount: txs.length,
+        totalValue,
+      }
+    })
+  }, [portfolios, allTransactions])
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -120,278 +89,199 @@ export default function TransactionsPage() {
           <p className="text-muted-foreground mt-2">Track all your crypto transactions</p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button disabled={!portfolios || portfolios.length === 0}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Transaction
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <form onSubmit={handleSubmit}>
-              <DialogHeader>
-                <DialogTitle>Add Transaction</DialogTitle>
-                <DialogDescription>Record a new crypto transaction</DialogDescription>
-              </DialogHeader>
-
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="portfolio">Portfolio</Label>
-                    <Select value={selectedPortfolio} onValueChange={setSelectedPortfolio} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select portfolio" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {portfolios?.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="asset">Asset</Label>
-                    <Select value={selectedAsset} onValueChange={setSelectedAsset} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select asset" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[300px]">
-                        {assets?.map((a) => (
-                          <SelectItem key={a.id} value={a.id.toString()}>
-                            <div className="flex items-center gap-2">
-                              {a.icon_url ? (
-                                <img src={a.icon_url} alt={a.symbol} className="w-5 h-5 rounded-full" />
-                              ) : (
-                                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
-                                  {a.symbol.slice(0, 1)}
-                                </div>
-                              )}
-                              <span className="font-medium">{a.symbol}</span>
-                              <span className="text-muted-foreground">- {a.name}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
-                    <Select value={txType} onValueChange={(v: any) => setTxType(v)} required>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="buy">Buy</SelectItem>
-                        <SelectItem value="sell">Sell</SelectItem>
-                        <SelectItem value="transfer_in">Transfer In</SelectItem>
-                        <SelectItem value="transfer_out">Transfer Out</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="timestamp">Date & Time</Label>
-                    <Input
-                      id="timestamp"
-                      type="datetime-local"
-                      value={timestamp}
-                      onChange={(e) => setTimestamp(e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      step="any"
-                      placeholder="0.00"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="any"
-                      placeholder="0.00"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fee">Fee (optional)</Label>
-                    <Input
-                      id="fee"
-                      type="number"
-                      step="any"
-                      placeholder="0.00"
-                      value={fee}
-                      onChange={(e) => setFee(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="note">Note (optional)</Label>
-                  <Input
-                    id="note"
-                    placeholder="Add a note..."
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="submit" disabled={createTransaction.isPending}>
-                  {createTransaction.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    'Add Transaction'
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <AddTransactionDialog 
+          open={isTransactionDialogOpen}
+          onOpenChange={setIsTransactionDialogOpen}
+        />
       </div>
 
-      {/* Portfolio Filter */}
+      {/* Portfolio Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {portfolioStats.map((portfolio) => (
+          <Card
+            key={portfolio.id}
+            className={cn(
+              "glass-strong border-white/10 cursor-pointer transition-all hover:scale-105",
+              selectedPortfolioId === portfolio.id && "ring-2 ring-primary"
+            )}
+            onClick={() => setSelectedPortfolioId(
+              selectedPortfolioId === portfolio.id ? null : portfolio.id
+            )}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{portfolio.name}</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums">
+                <Number>{formatCurrency(portfolio.totalValue)}</Number>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {portfolio.transactionCount} transaction{portfolio.transactionCount !== 1 ? 's' : ''}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filters */}
       <Card className="glass-strong border-white/10">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <Label>Filter by Portfolio:</Label>
-            <Select value={selectedPortfolio} onValueChange={setSelectedPortfolio}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Select portfolio" />
+          <div className="grid gap-4 md:grid-cols-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search assets..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Type Filter */}
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger>
+                <SelectValue placeholder="All types" />
               </SelectTrigger>
               <SelectContent>
-                {portfolios?.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="buy">Buy</SelectItem>
+                <SelectItem value="sell">Sell</SelectItem>
+                <SelectItem value="transfer_in">Transfer In</SelectItem>
+                <SelectItem value="transfer_out">Transfer Out</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Sort by Date</SelectItem>
+                <SelectItem value="amount">Sort by Amount</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Clear Filters */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedPortfolioId(null)
+                setSearchQuery('')
+                setFilterType('all')
+                setSortBy('date')
+              }}
+            >
+              Clear Filters
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Transactions List */}
-      {selectedPortfolio ? (
-        <Card className="glass-strong border-white/10">
-          <CardHeader>
-            <CardTitle>Transaction History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      {/* Transactions Table */}
+      <Card className="glass-strong border-white/10">
+        <CardHeader>
+          <CardTitle>
+            {selectedPortfolioId 
+              ? `${portfolios?.find(p => p.id === selectedPortfolioId)?.name} Transactions`
+              : 'All Transactions'
+            } ({filteredTransactions.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : filteredTransactions.length > 0 ? (
+            <div className="space-y-2">
+              {/* Column Headers */}
+              <div className="flex items-center gap-3 px-3 pb-2 border-b border-white/5">
+                <div className="w-[60px]"></div>
+                <div className="min-w-[120px]"></div>
+                <div className="flex-1 grid grid-cols-5 gap-4 text-xs text-muted-foreground uppercase-label">
+                  <div>Portfolio</div>
+                  <div>Date</div>
+                  <div>Quantity</div>
+                  <div>Price</div>
+                  <div className="text-right">Total</div>
+                </div>
               </div>
-            ) : transactions && transactions.length > 0 ? (
-              <div className="space-y-2">
-                {transactions.map((tx) => (
-                  <div
+
+              {/* Transaction Rows */}
+              {filteredTransactions.map((tx) => {
+                const isProfit = tx.type === 'buy' || tx.type === 'transfer_in'
+                
+                return (
+                  <Link
                     key={tx.id}
-                    className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors group"
+                    href={`/dashboard/assets/${tx.asset_id}`}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-white/5 group"
                   >
-                    <div className="flex items-center gap-4">
-                      {tx.assets.icon_url ? (
+                    <div className={cn(
+                      "px-2 py-1 rounded text-xs font-semibold uppercase w-[60px] text-center",
+                      isProfit ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss"
+                    )}>
+                      {tx.type.replace('_', ' ')}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 min-w-[120px]">
+                      {tx.assets?.icon_url ? (
                         <img 
                           src={tx.assets.icon_url} 
                           alt={tx.assets.symbol} 
-                          className="w-10 h-10 rounded-full"
+                          className="w-6 h-6 rounded-full"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-                          <span className="text-sm font-bold">{tx.assets.symbol.slice(0, 2)}</span>
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                          {tx.assets?.symbol[0]}
                         </div>
                       )}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{tx.assets.symbol}</span>
-                          <span className={cn('text-sm uppercase', getTxColor(tx.type))}>
-                            {tx.type.replace('_', ' ')}
-                          </span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {format(new Date(tx.timestamp), 'MMM dd, yyyy HH:mm')}
-                        </div>
-                      </div>
+                      <span className="font-medium text-sm">{tx.assets?.symbol}</span>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <div className="font-medium tabular-nums">
-                          {formatNumber(tx.quantity)} {tx.assets.symbol}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          @ {formatCurrency(tx.price)}
-                        </div>
+                    <div className="flex-1 grid grid-cols-5 gap-4 text-sm">
+                      <div className="text-muted-foreground truncate">
+                        {tx.portfolios?.name || 'Unknown'}
                       </div>
-
-                      <div className="text-right min-w-[100px]">
-                        <div className="font-semibold tabular-nums">
-                          {formatCurrency(tx.quantity * tx.price)}
-                        </div>
-                        {tx.fee && tx.fee > 0 && (
-                          <div className="text-sm text-muted-foreground">
-                            Fee: {formatCurrency(tx.fee)}
-                          </div>
-                        )}
+                      <div className="text-muted-foreground">
+                        {format(new Date(tx.timestamp), 'MMM dd, HH:mm')}
                       </div>
-
-                      {tx.id && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => deleteTransaction.mutate({ id: tx.id! })}
-                        >
-                          <Trash2 className="w-4 h-4 text-loss" />
-                        </Button>
-                      )}
+                      <Number className="font-medium">{formatNumber(tx.quantity)}</Number>
+                      <Number className="font-medium">{formatCurrency(tx.price)}</Number>
+                      <Number className="font-semibold text-right">
+                        {formatCurrency(tx.quantity * tx.price)}
+                      </Number>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No transactions yet</p>
-                <Button onClick={() => setDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Transaction
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="glass-strong border-white/10">
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Select a portfolio to view transactions</p>
-          </CardContent>
-        </Card>
-      )}
+                  </Link>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">
+                {searchQuery || filterType !== 'all' || selectedPortfolioId
+                  ? 'No transactions match your filters'
+                  : 'No transactions yet'
+                }
+              </p>
+              <Button onClick={() => setIsTransactionDialogOpen(true)}>
+                Add Transaction
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

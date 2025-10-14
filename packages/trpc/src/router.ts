@@ -462,6 +462,29 @@ export const appRouter = t.router({
         return data as (Transaction & { assets: Asset })[]
       }),
 
+    listAll: protectedProcedure
+      .query(async ({ ctx }) => {
+        // Get user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('user_id', ctx.user.id)
+
+        if (!portfolios || portfolios.length === 0) return []
+
+        const portfolioIds = portfolios.map(p => p.id)
+
+        // Get all transactions for user's portfolios
+        const { data, error } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(*), portfolios(name)')
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: false })
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as (Transaction & { assets: Asset, portfolios: { name: string } })[]
+      }),
+
     create: protectedProcedure
       .input(
         z.object({
