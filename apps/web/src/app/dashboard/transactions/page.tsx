@@ -335,7 +335,7 @@ export default function TransactionsPage() {
                         <div className="font-semibold tabular-nums">
                           {formatCurrency(tx.quantity * tx.price)}
                         </div>
-                        {tx.fee > 0 && (
+                        {tx.fee && tx.fee > 0 && (
                           <div className="text-sm text-muted-foreground">
                             Fee: {formatCurrency(tx.fee)}
                           </div>
