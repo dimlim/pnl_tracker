@@ -47,13 +47,22 @@ export function PriceChart({
 }: PriceChartProps) {
   // Transform data for recharts
   const chartData = useMemo(() => {
-    return data
+    if (!data || data.length === 0) return []
+    
+    const sorted = data
       .map((point) => ({
         timestamp: new Date(point.ts).getTime(),
-        date: format(new Date(point.ts), 'MMM dd'),
+        date: format(new Date(point.ts), 'MMM dd HH:mm'),
         price: point.price,
       }))
       .sort((a, b) => a.timestamp - b.timestamp)
+    
+    // If we have very few points, don't filter
+    if (sorted.length <= 50) return sorted
+    
+    // Sample data to max 100 points for performance
+    const step = Math.ceil(sorted.length / 100)
+    return sorted.filter((_, index) => index % step === 0 || index === sorted.length - 1)
   }, [data])
 
   // Transform transactions to chart points
@@ -118,19 +127,27 @@ export function PriceChart({
         
         <Tooltip
           contentStyle={{
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backgroundColor: 'rgba(0, 0, 0, 0.95)',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
             borderRadius: '8px',
             padding: '12px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
           }}
           labelStyle={{
-            color: 'rgba(255, 255, 255, 0.7)',
-            marginBottom: '4px',
+            color: 'rgba(255, 255, 255, 0.9)',
+            marginBottom: '8px',
+            fontWeight: 600,
           }}
           itemStyle={{
-            color: '#fff',
+            color: '#10b981',
+            fontWeight: 500,
           }}
-          formatter={(value: number) => [formatCurrency(value), 'Price']}
+          formatter={(value: number, name: string) => {
+            if (name === 'Buy') {
+              return [formatCurrency(value), 'Entry Price']
+            }
+            return [formatCurrency(value), 'Price']
+          }}
         />
         
         <defs>
@@ -168,9 +185,10 @@ export function PriceChart({
           type="monotone"
           dataKey="price"
           stroke={isPositive ? '#10b981' : '#ef4444'}
-          strokeWidth={2}
+          strokeWidth={2.5}
           fill="url(#colorPrice)"
-          animationDuration={1000}
+          animationDuration={300}
+          isAnimationActive={chartData.length < 100}
         />
         
         {/* Transaction markers */}
@@ -180,8 +198,11 @@ export function PriceChart({
             data={transactionPoints}
             dataKey="price"
             fill="#8b5cf6"
+            stroke="#a78bfa"
+            strokeWidth={2}
             shape="circle"
-            r={6}
+            r={7}
+            isAnimationActive={false}
           />
         )}
       </ComposedChart>
