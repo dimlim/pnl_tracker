@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Number } from '@/components/ui/number'
+import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -12,12 +14,15 @@ import {
   Activity,
   Plus,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  ArrowRightLeft
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatCurrency, formatPercentage, formatNumber, getPnLColor, cn } from '@/lib/utils'
 
 export default function DashboardPage() {
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
+  
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: dashboardStats, isLoading: statsLoading, error: statsError } = trpc.dashboard.getStats.useQuery()
 
@@ -57,12 +62,18 @@ export default function DashboardPage() {
           <h1 className="text-4xl font-bold font-heading text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-2">Track your crypto portfolio performance</p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/portfolios/new">
-            <Plus className="w-4 h-4 mr-2" />
-            New Portfolio
-          </Link>
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={() => setIsTransactionDialogOpen(true)} variant="outline">
+            <ArrowRightLeft className="w-4 h-4 mr-2" />
+            Add Transaction
+          </Button>
+          <Button asChild>
+            <Link href="/dashboard/portfolios">
+              <Plus className="w-4 h-4 mr-2" />
+              New Portfolio
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -292,6 +303,12 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Transaction Dialog */}
+      <AddTransactionDialog 
+        open={isTransactionDialogOpen} 
+        onOpenChange={setIsTransactionDialogOpen}
+      />
     </div>
   )
 }
