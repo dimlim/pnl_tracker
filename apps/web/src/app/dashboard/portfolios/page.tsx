@@ -35,6 +35,10 @@ export default function PortfoliosPage() {
       setDialogOpen(false)
       setName('')
     },
+    onError: (error) => {
+      console.error('Failed to create portfolio:', error)
+      alert(`Error: ${error.message}`)
+    },
   })
 
   const handleCreate = (e: React.FormEvent) => {
