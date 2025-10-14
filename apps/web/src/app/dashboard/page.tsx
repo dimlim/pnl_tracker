@@ -53,7 +53,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-4xl font-bold text-gradient">Dashboard</h1>
+          <h1 className="text-4xl font-bold font-heading text-gradient">Dashboard</h1>
           <p className="text-muted-foreground mt-2">Track your crypto portfolio performance</p>
         </div>
         <Button asChild>

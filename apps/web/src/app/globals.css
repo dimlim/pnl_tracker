@@ -163,7 +163,7 @@
   .stat-value {
     font-family: var(--font-mono);
     font-weight: 700;
-    font-size: var(--text-number-xl);
+    font-size: clamp(1.5rem, 3vw, 2rem);
     font-variant-numeric: tabular-nums;
     letter-spacing: var(--tracking-snug);
     line-height: var(--leading-tight);
