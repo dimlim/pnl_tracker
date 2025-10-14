@@ -167,28 +167,52 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {allTransactions && allTransactions.length > 0 ? (
-              <div className="space-y-3">
-                {allTransactions.slice(0, 5).map((tx: any) => (
-                  <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors">
-                    <div className="flex items-center gap-3">
-                      {tx.assets?.icon_url ? (
-                        <img src={tx.assets.icon_url} alt={tx.assets.symbol} className="w-8 h-8 rounded-full" />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
-                          {tx.assets?.symbol.slice(0, 1)}
+              <div className="space-y-2">
+                {allTransactions.slice(0, 5).map((tx: any) => {
+                  const currentPrice = tx.assets?.current_price || 0
+                  const buyPrice = tx.price
+                  const currentValue = tx.quantity * currentPrice
+                  const roi = ((currentPrice - buyPrice) / buyPrice) * 100
+                  const isProfit = roi >= 0
+                  
+                  return (
+                    <div key={tx.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-white/5">
+                      <div className={cn("px-2 py-1 rounded text-xs font-semibold uppercase", isProfit ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss")}>
+                        {tx.type}
+                      </div>
+                      <div className="flex items-center gap-2 min-w-[100px]">
+                        {tx.assets?.icon_url ? (
+                          <img src={tx.assets.icon_url} alt={tx.assets.symbol} className="w-6 h-6 rounded-full" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                            {tx.assets?.symbol.slice(0, 1)}
+                          </div>
+                        )}
+                        <span className="font-medium text-sm">{tx.assets?.symbol}</span>
+                      </div>
+                      <div className="flex-1 grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <div className="text-xs text-muted-foreground uppercase-label">Quantity</div>
+                          <Number className="font-medium">{formatNumber(tx.quantity)}</Number>
                         </div>
-                      )}
-                      <div>
-                        <div className="font-medium">{tx.assets?.symbol}</div>
-                        <div className="text-sm text-muted-foreground">{tx.type.toUpperCase()}</div>
+                        <div>
+                          <div className="text-xs text-muted-foreground uppercase-label">Buy Price</div>
+                          <Number className="font-medium">{formatCurrency(buyPrice)}</Number>
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground uppercase-label">Current Value</div>
+                          <Number className="font-medium">{formatCurrency(currentValue)}</Number>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-muted-foreground uppercase-label">ROI</div>
+                          <Number className={cn("font-semibold", isProfit ? "text-profit" : "text-loss")}>
+                            {isProfit ? '+' : ''}{roi.toFixed(2)}%
+                          </Number>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Number className="font-medium block">{tx.quantity} @ {formatCurrency(tx.price)}</Number>
-                      <div className="text-sm text-muted-foreground">{new Date(tx.timestamp).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <div className="text-center py-12">
@@ -209,44 +233,57 @@ export default function DashboardPage() {
           <CardTitle>Top Performers</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-2">
             {topPerformers && topPerformers.length > 0 ? (
-              topPerformers.map((asset: any) => (
-                <Link
-                  key={asset.id}
-                  href={`/dashboard/assets/${asset.id}`}
-                  className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    {asset.icon_url ? (
-                      <img 
-                        src={asset.icon_url} 
-                        alt={asset.symbol} 
-                        className="w-10 h-10 rounded-full"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold">
-                        {asset.symbol[0]}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium group-hover:text-primary transition-colors">{asset.name}</p>
-                      <p className="text-sm text-muted-foreground">{asset.symbol}</p>
+              topPerformers.map((asset: any) => {
+                const isProfit = (asset.pnlPercent || 0) >= 0
+                
+                return (
+                  <Link
+                    key={asset.id}
+                    href={`/dashboard/assets/${asset.id}`}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-white/5 group"
+                  >
+                    <div className={cn("px-2 py-1 rounded text-xs font-semibold uppercase", isProfit ? "bg-profit/10 text-profit" : "bg-loss/10 text-loss")}>
+                      {isProfit ? 'Profit' : 'Loss'}
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <Number className="font-medium block">{formatCurrency(asset.value || 0)}</Number>
-                    <p className={`text-sm font-medium font-mono tabular-nums flex items-center gap-1 ${getPnLColor(asset.pnlPercent || 0)}`}>
-                      {(asset.pnlPercent || 0) >= 0 ? (
-                        <ArrowUpRight className="w-3 h-3" />
+                    <div className="flex items-center gap-2 min-w-[100px]">
+                      {asset.icon_url ? (
+                        <img 
+                          src={asset.icon_url} 
+                          alt={asset.symbol} 
+                          className="w-6 h-6 rounded-full"
+                        />
                       ) : (
-                        <ArrowDownRight className="w-3 h-3" />
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                          {asset.symbol[0]}
+                        </div>
                       )}
-                      {formatPercentage(Math.abs(asset.pnlPercent || 0))}
-                    </p>
-                  </div>
-                </Link>
-              ))
+                      <span className="font-medium text-sm">{asset.symbol}</span>
+                    </div>
+                    <div className="flex-1 grid grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <div className="text-xs text-muted-foreground uppercase-label">Quantity</div>
+                        <Number className="font-medium">{formatNumber(asset.quantity || 0)}</Number>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground uppercase-label">Buy Price</div>
+                        <Number className="font-medium">{formatCurrency(asset.avgBuyPrice || 0)}</Number>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground uppercase-label">Current Value</div>
+                        <Number className="font-medium">{formatCurrency(asset.value || 0)}</Number>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground uppercase-label">ROI</div>
+                        <Number className={cn("font-semibold", isProfit ? "text-profit" : "text-loss")}>
+                          {isProfit ? '+' : ''}{(asset.pnlPercent || 0).toFixed(2)}%
+                        </Number>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 No assets in your portfolios yet
