@@ -15,7 +15,7 @@ import {
   ArrowDownRight
 } from 'lucide-react'
 import Link from 'next/link'
-import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
+import { formatCurrency, formatPercentage, formatNumber, getPnLColor, cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
