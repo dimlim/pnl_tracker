@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -17,8 +16,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Wallet, TrendingUp, Loader2, ArrowRight } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { Plus, Wallet, Loader2 } from 'lucide-react'
+import { PortfolioCard } from '@/components/portfolio/portfolio-card'
 
 export default function PortfoliosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -158,36 +157,7 @@ export default function PortfoliosPage() {
       ) : portfolios && portfolios.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {portfolios.map((portfolio) => (
-            <Link key={portfolio.id} href={`/dashboard/portfolios/${portfolio.id}`}>
-              <Card className="glass-strong border-white/10 hover:border-white/20 hover:scale-105 transition-all h-full group">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
-                      <Wallet className="w-6 h-6 text-white" />
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
-                  <CardTitle className="mt-4">{portfolio.name}</CardTitle>
-                  <CardDescription>
-                    {portfolio.pnl_method.toUpperCase()} • {portfolio.base_currency}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Total Value</span>
-                      <span className="font-semibold tabular-nums">{formatCurrency(0)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">P&L</span>
-                      <span className="font-semibold text-muted-foreground tabular-nums">
-                        {formatCurrency(0)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <PortfolioCard key={portfolio.id} portfolio={portfolio} />
           ))}
         </div>
       ) : (
