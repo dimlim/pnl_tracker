@@ -124,7 +124,10 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Database error:', error)
-      throw new Error('Failed to add asset to database')
+      return NextResponse.json(
+        { error: `Database error: ${error.message}`, details: error },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ 
@@ -132,10 +135,10 @@ export async function POST(request: NextRequest) {
       asset: newAsset,
       message: 'Asset added successfully'
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Add asset error:', error)
     return NextResponse.json(
-      { error: 'Failed to add cryptocurrency' },
+      { error: error?.message || 'Failed to add cryptocurrency', stack: error?.stack },
       { status: 500 }
     )
   }
