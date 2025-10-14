@@ -1,6 +1,6 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import Link from 'next/link'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
@@ -12,9 +12,10 @@ import {
   TrendingDown, 
   Activity,
   BarChart3,
-  Clock,
   DollarSign,
-  Wallet
+  Wallet,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react'
 import { formatCurrency, formatNumber, formatPercentage, cn } from '@/lib/utils'
 import { format } from 'date-fns'
@@ -24,12 +25,23 @@ import { SeedPricesButton } from '@/components/admin/seed-prices-button'
 export default function AssetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const assetId = parseInt(id)
+  const [chartPeriod, setChartPeriod] = useState<'1h' | '4h' | '24h' | '7d' | '30d' | 'all'>('24h')
   
   const { data: asset, isLoading: assetLoading } = trpc.assets.getById.useQuery({ id: assetId })
   const { data: assetStats, isLoading: statsLoading } = trpc.assets.getStats.useQuery({ id: assetId })
+  
+  const periodToDays: Record<typeof chartPeriod, number> = {
+    '1h': 1,
+    '4h': 1,
+    '24h': 1,
+    '7d': 7,
+    '30d': 30,
+    'all': 365,
+  }
+  
   const { data: priceHistory, isLoading: historyLoading } = trpc.assets.getPriceHistory.useQuery({ 
     id: assetId,
-    days: 30 
+    days: periodToDays[chartPeriod]
   })
   const { data: userTransactions, isLoading: txLoading } = trpc.assets.getUserTransactions.useQuery({ 
     id: assetId 
@@ -212,20 +224,36 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
             <Activity className="w-4 h-4 mr-2" />
             Your Transactions
           </TabsTrigger>
-          <TabsTrigger value="history">
-            <Clock className="w-4 h-4 mr-2" />
-            Price History
-          </TabsTrigger>
         </TabsList>
 
         {/* Price Chart Tab */}
         <TabsContent value="chart" className="space-y-4">
           <Card className="glass-strong border-white/10">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>30-Day Price Chart</CardTitle>
-              {(!priceHistory || priceHistory.length === 0) && (
-                <SeedPricesButton assetId={assetId} />
-              )}
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <CardTitle>Price Chart</CardTitle>
+                <div className="flex items-center gap-2">
+                  {(!priceHistory || priceHistory.length === 0) && (
+                    <SeedPricesButton assetId={assetId} />
+                  )}
+                  <div className="flex gap-1 glass p-1 rounded-lg">
+                    {(['1h', '4h', '24h', '7d', '30d', 'all'] as const).map((period) => (
+                      <button
+                        key={period}
+                        onClick={() => setChartPeriod(period)}
+                        className={cn(
+                          'px-3 py-1.5 rounded text-sm font-medium transition-all',
+                          chartPeriod === period
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-white/10 text-muted-foreground'
+                        )}
+                      >
+                        {period === 'all' ? 'All' : period.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {historyLoading ? (
@@ -261,95 +289,80 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
               ) : userTransactions && userTransactions.length > 0 ? (
                 <div className="space-y-2">
-                  {userTransactions.map((tx: any) => (
-                    <div
-                      key={tx.id}
-                      className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={cn(
-                          'w-10 h-10 rounded-full flex items-center justify-center',
-                          tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' 
-                            ? 'bg-profit/20 text-profit' 
-                            : 'bg-loss/20 text-loss'
-                        )}>
-                          {tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' ? (
-                            <TrendingUp className="w-5 h-5" />
-                          ) : (
-                            <TrendingDown className="w-5 h-5" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium">{tx.type.toUpperCase()}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {format(new Date(tx.timestamp), 'MMM dd, yyyy HH:mm')}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-semibold tabular-nums">
-                          {formatNumber(tx.quantity)} @ {formatCurrency(tx.price)}
-                        </div>
-                        <div className="text-sm text-muted-foreground tabular-nums">
-                          Total: {formatCurrency(tx.quantity * tx.price)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No transactions for this asset yet</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Price History Tab */}
-        <TabsContent value="history" className="space-y-4">
-          <Card className="glass-strong border-white/10">
-            <CardHeader>
-              <CardTitle>Historical Price Data</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {historyLoading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-16 bg-white/5 rounded animate-pulse" />
-                  ))}
-                </div>
-              ) : priceHistory && priceHistory.length > 0 ? (
-                <div className="space-y-2">
-                  {priceHistory.slice(0, 10).map((tick: any, index: number) => {
-                    const prevPrice = priceHistory[index + 1]?.price || tick.price
-                    const change = ((tick.price - prevPrice) / prevPrice) * 100
-                    const isPositive = change >= 0
-
+                  {userTransactions.map((tx: any) => {
+                    const txValue = tx.quantity * tx.price
+                    const currentValue = tx.quantity * currentPrice
+                    const pnl = currentValue - txValue
+                    const pnlPercent = (pnl / txValue) * 100
+                    const isProfitable = pnl >= 0
+                    const isBuy = tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit'
+                    
                     return (
                       <div
-                        key={tick.id}
-                        className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
+                        key={tx.id}
+                        className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors border border-white/5"
                       >
-                        <div>
-                          <div className="font-medium">
-                            {format(new Date(tick.ts), 'MMM dd, yyyy')}
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            'w-10 h-10 rounded-full flex items-center justify-center',
+                            isBuy ? 'bg-profit/20 text-profit' : 'bg-loss/20 text-loss'
+                          )}>
+                            {isBuy ? (
+                              <TrendingUp className="w-5 h-5" />
+                            ) : (
+                              <TrendingDown className="w-5 h-5" />
+                            )}
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {format(new Date(tick.ts), 'HH:mm:ss')}
+                          <div>
+                            <div className="font-medium uppercase text-sm">{tx.type}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(new Date(tx.timestamp), 'MMM dd, yyyy HH:mm')}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-semibold tabular-nums">
-                            {formatCurrency(tick.price)}
+                        
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground mb-1">Quantity</div>
+                            <div className="font-semibold tabular-nums">
+                              {formatNumber(tx.quantity)}
+                            </div>
                           </div>
-                          {index < priceHistory.length - 1 && (
-                            <div className={cn(
-                              'text-sm tabular-nums',
-                              isPositive ? 'text-profit' : 'text-loss'
-                            )}>
-                              {isPositive ? '+' : ''}{change.toFixed(2)}%
+                          
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground mb-1">Price</div>
+                            <div className="font-semibold tabular-nums">
+                              {formatCurrency(tx.price)}
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <div className="text-xs text-muted-foreground mb-1">Total</div>
+                            <div className="font-semibold tabular-nums">
+                              {formatCurrency(txValue)}
+                            </div>
+                          </div>
+                          
+                          {isBuy && (
+                            <div className="text-right min-w-[100px]">
+                              <div className="text-xs text-muted-foreground mb-1">P&L</div>
+                              <div className={cn(
+                                'font-semibold tabular-nums flex items-center justify-end gap-1',
+                                isProfitable ? 'text-profit' : 'text-loss'
+                              )}>
+                                {isProfitable ? (
+                                  <ArrowUpRight className="w-3 h-3" />
+                                ) : (
+                                  <ArrowDownRight className="w-3 h-3" />
+                                )}
+                                <span>{isProfitable ? '+' : ''}{formatCurrency(pnl)}</span>
+                              </div>
+                              <div className={cn(
+                                'text-xs tabular-nums',
+                                isProfitable ? 'text-profit' : 'text-loss'
+                              )}>
+                                {isProfitable ? '+' : ''}{pnlPercent.toFixed(2)}%
+                              </div>
                             </div>
                           )}
                         </div>
@@ -359,8 +372,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No price history available</p>
+                  <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">No transactions for this asset yet</p>
                 </div>
               )}
             </CardContent>
