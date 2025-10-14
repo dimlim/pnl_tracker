@@ -85,37 +85,56 @@ export async function GET() {
 
     const prices = await response.json()
 
-    console.log('Fetched prices from CoinGecko:', prices)
+    console.log('Fetched prices from CoinGecko:', JSON.stringify(prices, null, 2))
+    console.log('Assets to update:', assets.length)
 
     // Update prices in database
     const updates = []
+    const errors = []
+    
     for (const asset of assets) {
       const coingeckoId = asset.coingecko_id || SYMBOL_TO_COINGECKO_ID[asset.symbol]
-      if (coingeckoId && prices[coingeckoId]) {
-        const priceData = prices[coingeckoId]
-        console.log(`Updating ${asset.symbol} (${coingeckoId}): $${priceData.usd}`)
-        
-        const { error: updateError } = await supabase
-          .from('assets')
-          .update({
-            current_price: priceData.usd,
-            price_change_24h: priceData.usd_24h_change || 0,
-            market_cap: priceData.usd_market_cap || 0,
-            last_updated: new Date().toISOString(),
-          })
-          .eq('id', asset.id)
-        
-        if (updateError) {
-          console.error(`Failed to update ${asset.symbol}:`, updateError)
-        } else {
-          updates.push(asset.symbol)
-        }
+      console.log(`Processing ${asset.symbol}, coingeckoId: ${coingeckoId}`)
+      
+      if (!coingeckoId) {
+        console.log(`No coingeckoId for ${asset.symbol}`)
+        continue
+      }
+      
+      if (!prices[coingeckoId]) {
+        console.log(`No price data for ${coingeckoId}`)
+        errors.push(`${asset.symbol}: no price data`)
+        continue
+      }
+      
+      const priceData = prices[coingeckoId]
+      console.log(`Updating ${asset.symbol} (${coingeckoId}): $${priceData.usd}`)
+      
+      const { error: updateError } = await supabase
+        .from('assets')
+        .update({
+          current_price: priceData.usd,
+          price_change_24h: priceData.usd_24h_change || 0,
+          market_cap: Math.round(priceData.usd_market_cap || 0),
+          last_updated: new Date().toISOString(),
+        })
+        .eq('id', asset.id)
+      
+      if (updateError) {
+        console.error(`Failed to update ${asset.symbol}:`, updateError)
+        errors.push(`${asset.symbol}: ${updateError.message}`)
+      } else {
+        updates.push(asset.symbol)
+        console.log(`✓ Updated ${asset.symbol}`)
       }
     }
 
     return NextResponse.json({
       success: true,
       updated: updates.length,
+      updatedAssets: updates,
+      errors: errors.length > 0 ? errors : undefined,
+      totalAssets: assets.length,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
