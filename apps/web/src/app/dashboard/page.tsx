@@ -18,19 +18,18 @@ import { formatCurrency, formatPercentage, getPnLColor } from '@/lib/utils'
 
 export default function DashboardPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
-  const { data: topAssets } = trpc.assets.list.useQuery()
+  const { data: dashboardStats } = trpc.dashboard.getStats.useQuery()
 
-  // Calculate stats from portfolios (simplified - will calculate from positions later)
   const mockStats = {
-    totalValue: 0,
-    totalPnL: 0,
-    pnlPercentage: 0,
-    portfolioCount: portfolios?.length || 0,
+    totalValue: dashboardStats?.totalValue || 0,
+    totalPnL: dashboardStats?.totalPnL || 0,
+    pnlPercentage: dashboardStats?.pnlPercentage || 0,
+    portfolioCount: dashboardStats?.portfolioCount || 0,
     dayChange: 0,
   }
 
-  // Empty transactions for now (will add proper fetching later)
-  const allTransactions: any[] = []
+  const allTransactions = dashboardStats?.recentTransactions || []
+  const topPerformers = dashboardStats?.topPerformers || []
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -193,38 +192,44 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {topAssets?.slice(0, 5).map((asset: any) => (
-              <div key={asset.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
-                <div className="flex items-center gap-3">
-                  {asset.icon_url ? (
-                    <img 
-                      src={asset.icon_url} 
-                      alt={asset.symbol} 
-                      className="w-10 h-10 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold">
-                      {asset.symbol[0]}
+            {topPerformers && topPerformers.length > 0 ? (
+              topPerformers.map((asset: any) => (
+                <div key={asset.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                  <div className="flex items-center gap-3">
+                    {asset.icon_url ? (
+                      <img 
+                        src={asset.icon_url} 
+                        alt={asset.symbol} 
+                        className="w-10 h-10 rounded-full"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold">
+                        {asset.symbol[0]}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium">{asset.name}</p>
+                      <p className="text-sm text-muted-foreground">{asset.symbol}</p>
                     </div>
-                  )}
-                  <div>
-                    <p className="font-medium">{asset.name}</p>
-                    <p className="text-sm text-muted-foreground">{asset.symbol}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium tabular-nums">{formatCurrency(asset.value || 0)}</p>
+                    <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.pnlPercent || 0)}`}>
+                      {(asset.pnlPercent || 0) >= 0 ? (
+                        <ArrowUpRight className="w-3 h-3" />
+                      ) : (
+                        <ArrowDownRight className="w-3 h-3" />
+                      )}
+                      {formatPercentage(Math.abs(asset.pnlPercent || 0))}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium tabular-nums">{formatCurrency(asset.current_price || 0)}</p>
-                  <p className={`text-sm font-medium flex items-center gap-1 ${getPnLColor(asset.price_change_24h || 0)}`}>
-                    {(asset.price_change_24h || 0) >= 0 ? (
-                      <ArrowUpRight className="w-3 h-3" />
-                    ) : (
-                      <ArrowDownRight className="w-3 h-3" />
-                    )}
-                    {formatPercentage(Math.abs(asset.price_change_24h || 0))}
-                  </p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No assets in your portfolios yet
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
