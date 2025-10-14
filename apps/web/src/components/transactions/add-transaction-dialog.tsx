@@ -106,42 +106,47 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
             <div className="space-y-2">
               <Label htmlFor="asset">Asset</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
                 <Input
-                  placeholder="Search crypto..."
+                  placeholder="Type to search crypto (e.g. BTC, Bitcoin)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
+                  required
                 />
               </div>
-              <Select value={selectedAsset} onValueChange={setSelectedAsset} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select asset" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {filteredAssets && filteredAssets.length > 0 ? (
-                    filteredAssets.map((a: any) => (
-                      <SelectItem key={a.id} value={a.id.toString()}>
-                        <div className="flex items-center gap-2">
-                          {a.icon_url ? (
-                            <img src={a.icon_url} alt={a.symbol} className="w-5 h-5 rounded-full" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
-                              {a.symbol.slice(0, 1)}
-                            </div>
-                          )}
-                          <span className="font-medium">{a.symbol}</span>
-                          <span className="text-muted-foreground">- {a.name}</span>
+              {searchQuery && filteredAssets && filteredAssets.length > 0 && (
+                <div className="max-h-[200px] overflow-y-auto border border-white/10 rounded-lg bg-background">
+                  {filteredAssets.slice(0, 10).map((a: any) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAsset(a.id.toString())
+                        setSearchQuery(a.symbol)
+                      }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors text-left"
+                    >
+                      {a.icon_url ? (
+                        <img src={a.icon_url} alt={a.symbol} className="w-6 h-6 rounded-full" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                          {a.symbol.slice(0, 1)}
                         </div>
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-muted-foreground">
-                      No assets found
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+                      )}
+                      <div className="flex-1">
+                        <div className="font-medium">{a.symbol}</div>
+                        <div className="text-sm text-muted-foreground">{a.name}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchQuery && filteredAssets && filteredAssets.length === 0 && (
+                <div className="p-3 text-center text-sm text-muted-foreground border border-white/10 rounded-lg">
+                  No crypto found for &quot;{searchQuery}&quot;
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
