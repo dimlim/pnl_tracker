@@ -329,19 +329,125 @@ export const appRouter = t.router({
   // Dashboard
   dashboard: t.router({
     getStats: protectedProcedure.query(async ({ ctx }) => {
-      console.log('[Dashboard] Fetching stats for user:', ctx.user.id)
-      
-      // Get all portfolios for user
-      const { data: portfolios, error: portfoliosError } = await ctx.supabase
-        .from('portfolios')
-        .select('id')
-        .eq('user_id', ctx.user.id)
+      try {
+        console.log('[Dashboard] Fetching stats for user:', ctx.user?.id)
+        
+        if (!ctx.user?.id) {
+          console.log('[Dashboard] No user ID, returning zeros')
+          return {
+            totalValue: 0,
+            totalPnL: 0,
+            pnlPercentage: 0,
+            portfolioCount: 0,
+            recentTransactions: [],
+            topPerformers: [],
+          }
+        }
+        
+        // Get all portfolios for user
+        const { data: portfolios, error: portfoliosError } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('user_id', ctx.user.id)
 
-      console.log('[Dashboard] Portfolios found:', portfolios?.length || 0)
+        console.log('[Dashboard] Portfolios found:', portfolios?.length || 0)
 
-      if (portfoliosError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: portfoliosError.message })
-      if (!portfolios || portfolios.length === 0) {
-        console.log('[Dashboard] No portfolios, returning zeros')
+        if (portfoliosError) {
+          console.error('[Dashboard] Portfolios error:', portfoliosError)
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: portfoliosError.message })
+        }
+        
+        if (!portfolios || portfolios.length === 0) {
+          console.log('[Dashboard] No portfolios, returning zeros')
+          return {
+            totalValue: 0,
+            totalPnL: 0,
+            pnlPercentage: 0,
+            portfolioCount: 0,
+            recentTransactions: [],
+            topPerformers: [],
+          }
+        }
+
+        const portfolioIds = portfolios.map(p => p.id)
+        console.log('[Dashboard] Portfolio IDs:', portfolioIds)
+
+        // Get all positions
+        const { data: positions, error: positionsError } = await ctx.supabase
+          .from('positions')
+          .select('*, assets(*)')
+          .in('portfolio_id', portfolioIds)
+
+        console.log('[Dashboard] Positions found:', positions?.length || 0)
+
+        if (positionsError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: positionsError.message })
+
+        // Calculate total value and P&L
+        let totalValue = 0
+        let totalCost = 0
+        const performersMap = new Map<string, { asset: any, value: number, pnl: number, pnlPercent: number }>()
+
+        positions?.forEach((pos: any) => {
+          const currentPrice = pos.assets?.current_price || 0
+          const value = pos.quantity * currentPrice
+          const cost = pos.quantity * pos.avg_price
+          const pnl = value - cost
+          const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0
+
+          totalValue += value
+          totalCost += cost
+
+          // Track per asset for top performers
+          const assetKey = pos.asset_id
+          if (performersMap.has(assetKey)) {
+            const existing = performersMap.get(assetKey)!
+            existing.value += value
+            existing.pnl += pnl
+            existing.pnlPercent = existing.value > 0 ? (existing.pnl / (existing.value - existing.pnl)) * 100 : 0
+          } else {
+            performersMap.set(assetKey, {
+              asset: pos.assets,
+              value,
+              pnl,
+              pnlPercent,
+            })
+          }
+        })
+
+        const totalPnL = totalValue - totalCost
+        const pnlPercentage = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
+        // Get top 5 performers by P&L percentage
+        const topPerformers = Array.from(performersMap.values())
+          .sort((a, b) => b.pnlPercent - a.pnlPercent)
+          .slice(0, 5)
+          .map(p => ({
+            ...p.asset,
+            pnl: p.pnl,
+            pnlPercent: p.pnlPercent,
+            value: p.value,
+          }))
+
+        // Get recent transactions
+        const { data: transactions, error: transactionsError } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(*)')
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: false })
+          .limit(5)
+
+        if (transactionsError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: transactionsError.message })
+
+        return {
+          totalValue,
+          totalPnL,
+          pnlPercentage,
+          portfolioCount: portfolios.length,
+          recentTransactions: transactions || [],
+          topPerformers,
+        }
+      } catch (error) {
+        console.error('[Dashboard] Unexpected error:', error)
         return {
           totalValue: 0,
           totalPnL: 0,
@@ -350,84 +456,6 @@ export const appRouter = t.router({
           recentTransactions: [],
           topPerformers: [],
         }
-      }
-
-      const portfolioIds = portfolios.map(p => p.id)
-      console.log('[Dashboard] Portfolio IDs:', portfolioIds)
-
-      // Get all positions
-      const { data: positions, error: positionsError } = await ctx.supabase
-        .from('positions')
-        .select('*, assets(*)')
-        .in('portfolio_id', portfolioIds)
-
-      console.log('[Dashboard] Positions found:', positions?.length || 0)
-
-      if (positionsError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: positionsError.message })
-
-      // Calculate total value and P&L
-      let totalValue = 0
-      let totalCost = 0
-      const performersMap = new Map<string, { asset: any, value: number, pnl: number, pnlPercent: number }>()
-
-      positions?.forEach((pos: any) => {
-        const currentPrice = pos.assets?.current_price || 0
-        const value = pos.quantity * currentPrice
-        const cost = pos.quantity * pos.avg_price
-        const pnl = value - cost
-        const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0
-
-        totalValue += value
-        totalCost += cost
-
-        // Track per asset for top performers
-        const assetKey = pos.asset_id
-        if (performersMap.has(assetKey)) {
-          const existing = performersMap.get(assetKey)!
-          existing.value += value
-          existing.pnl += pnl
-          existing.pnlPercent = existing.value > 0 ? (existing.pnl / (existing.value - existing.pnl)) * 100 : 0
-        } else {
-          performersMap.set(assetKey, {
-            asset: pos.assets,
-            value,
-            pnl,
-            pnlPercent,
-          })
-        }
-      })
-
-      const totalPnL = totalValue - totalCost
-      const pnlPercentage = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
-
-      // Get top 5 performers by P&L percentage
-      const topPerformers = Array.from(performersMap.values())
-        .sort((a, b) => b.pnlPercent - a.pnlPercent)
-        .slice(0, 5)
-        .map(p => ({
-          ...p.asset,
-          pnl: p.pnl,
-          pnlPercent: p.pnlPercent,
-          value: p.value,
-        }))
-
-      // Get recent transactions
-      const { data: transactions, error: transactionsError } = await ctx.supabase
-        .from('transactions')
-        .select('*, assets(*)')
-        .in('portfolio_id', portfolioIds)
-        .order('timestamp', { ascending: false })
-        .limit(5)
-
-      if (transactionsError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: transactionsError.message })
-
-      return {
-        totalValue,
-        totalPnL,
-        pnlPercentage,
-        portfolioCount: portfolios.length,
-        recentTransactions: transactions || [],
-        topPerformers,
       }
     }),
   }),
