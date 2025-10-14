@@ -74,6 +74,10 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
   const currentPrice = asset.current_price || 0
   const priceChange24h = asset.price_change_24h || 0
   const isPositive = priceChange24h >= 0
+  
+  const realizedPnL = assetStats?.realizedPnL || 0
+  const unrealizedPnL = assetStats?.unrealizedPnL || 0
+  const breakEvenPrice = assetStats?.breakEvenPrice || 0
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -173,29 +177,69 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
         </Card>
 
         <Card className="glass-strong border-white/10">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
-            {(assetStats?.totalPnL || 0) >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-profit" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-loss" />
-            )}
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-profit" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total P&L</CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <div className={cn(
               'text-2xl font-bold tabular-nums',
               (assetStats?.totalPnL || 0) >= 0 ? 'text-profit' : 'text-loss'
             )}>
-              {formatCurrency(assetStats?.totalPnL || 0)}
+              {(assetStats?.totalPnL || 0) >= 0 ? '+' : ''}{formatCurrency(assetStats?.totalPnL || 0)}
+            </div>
+            <div className="flex gap-4 mt-2 text-xs">
+              <div>
+                <span className="text-muted-foreground">Realized: </span>
+                <span className={cn(
+                  'font-semibold tabular-nums',
+                  realizedPnL >= 0 ? 'text-profit' : 'text-loss'
+                )}>
+                  {realizedPnL >= 0 ? '+' : ''}{formatCurrency(realizedPnL)}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Unrealized: </span>
+                <span className={cn(
+                  'font-semibold tabular-nums',
+                  unrealizedPnL >= 0 ? 'text-profit' : 'text-loss'
+                )}>
+                  {unrealizedPnL >= 0 ? '+' : ''}{formatCurrency(unrealizedPnL)}
+                </span>
+              </div>
             </div>
             <p className={cn(
-              'text-xs mt-1',
-              (assetStats?.totalPnL || 0) >= 0 ? 'text-profit' : 'text-loss'
+              'text-sm tabular-nums mt-1',
+              (assetStats?.pnlPercent || 0) >= 0 ? 'text-profit' : 'text-loss'
             )}>
-              {(assetStats?.totalPnL || 0) >= 0 ? '+' : ''}{formatPercentage(assetStats?.pnlPercent || 0)}
+              {(assetStats?.pnlPercent || 0) >= 0 ? '+' : ''}{(assetStats?.pnlPercent || 0).toFixed(2)}%
             </p>
           </CardContent>
         </Card>
+
+        {breakEvenPrice > 0 && (
+          <Card className="glass-strong border-white/10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-amber-500" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">Break-Even Price</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold tabular-nums text-amber-500">
+                {formatCurrency(breakEvenPrice)}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {currentPrice > breakEvenPrice 
+                  ? `${formatCurrency(currentPrice - breakEvenPrice)} above break-even`
+                  : `${formatCurrency(breakEvenPrice - currentPrice)} to break-even`
+                }
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="glass-strong border-white/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -262,7 +306,12 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
               ) : priceHistory && priceHistory.length > 0 ? (
                 <div className="h-[400px]">
-                  <PriceChart data={priceHistory} height={400} />
+                  <PriceChart 
+                    data={priceHistory} 
+                    transactions={userTransactions || []} 
+                    breakEvenPrice={breakEvenPrice}
+                    height={400} 
+                  />
                 </div>
               ) : (
                 <div className="h-[400px] flex flex-col items-center justify-center gap-4">

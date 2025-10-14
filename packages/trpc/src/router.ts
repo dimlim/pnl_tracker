@@ -82,6 +82,9 @@ export const appRouter = t.router({
             totalPnL: 0,
             pnlPercent: 0,
             transactionCount: 0,
+            realizedPnL: 0,
+            unrealizedPnL: 0,
+            breakEvenPrice: 0,
           }
         }
 
@@ -102,14 +105,18 @@ export const appRouter = t.router({
             totalPnL: 0,
             pnlPercent: 0,
             transactionCount: 0,
+            realizedPnL: 0,
+            unrealizedPnL: 0,
+            breakEvenPrice: 0,
           }
         }
 
-        // Calculate stats
+        // Calculate stats with FIFO method
         let totalQuantity = 0
         let totalCost = 0
         let totalBought = 0
         let totalBoughtCost = 0
+        let realizedPnL = 0
 
         for (const tx of txs) {
           if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
@@ -119,8 +126,12 @@ export const appRouter = t.router({
             totalBoughtCost += tx.quantity * tx.price + (tx.fee || 0)
           } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
             const avgPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0
+            const soldValue = tx.quantity * tx.price - (tx.fee || 0)
+            const costBasis = tx.quantity * avgPrice
+            realizedPnL += soldValue - costBasis
+            
             totalQuantity -= tx.quantity
-            totalCost -= tx.quantity * avgPrice
+            totalCost -= costBasis
           }
         }
 
@@ -134,8 +145,12 @@ export const appRouter = t.router({
         const currentPrice = asset?.current_price || 0
         const currentValue = totalQuantity * currentPrice
         const avgBuyPrice = totalBought > 0 ? totalBoughtCost / totalBought : 0
-        const totalPnL = currentValue - totalCost
-        const pnlPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+        const unrealizedPnL = currentValue - totalCost
+        const totalPnL = realizedPnL + unrealizedPnL
+        const pnlPercent = totalBoughtCost > 0 ? (totalPnL / totalBoughtCost) * 100 : 0
+        
+        // Break-even price = total cost / total quantity
+        const breakEvenPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0
 
         return {
           totalQuantity,
@@ -143,6 +158,9 @@ export const appRouter = t.router({
           totalPnL,
           pnlPercent,
           transactionCount: txs.length,
+          realizedPnL,
+          unrealizedPnL,
+          breakEvenPrice,
         }
       }),
 

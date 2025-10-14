@@ -9,6 +9,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  ReferenceLine,
+  Scatter,
+  ComposedChart,
 } from 'recharts'
 import { format } from 'date-fns'
 import { formatCurrency } from '@/lib/utils'
@@ -19,13 +22,29 @@ interface PriceDataPoint {
   price: number
 }
 
+interface Transaction {
+  id: number
+  timestamp: string | Date
+  type: string
+  quantity: number
+  price: number
+}
+
 interface PriceChartProps {
   data: PriceDataPoint[]
+  transactions?: Transaction[]
+  breakEvenPrice?: number
   height?: number
   showGrid?: boolean
 }
 
-export function PriceChart({ data, height = 400, showGrid = true }: PriceChartProps) {
+export function PriceChart({ 
+  data, 
+  transactions = [], 
+  breakEvenPrice,
+  height = 400, 
+  showGrid = true 
+}: PriceChartProps) {
   // Transform data for recharts
   const chartData = useMemo(() => {
     return data
@@ -36,6 +55,19 @@ export function PriceChart({ data, height = 400, showGrid = true }: PriceChartPr
       }))
       .sort((a, b) => a.timestamp - b.timestamp)
   }, [data])
+
+  // Transform transactions to chart points
+  const transactionPoints = useMemo(() => {
+    return transactions
+      .filter(tx => tx.type === 'buy' || tx.type === 'deposit' || tx.type === 'transfer_in')
+      .map(tx => ({
+        timestamp: new Date(tx.timestamp).getTime(),
+        date: format(new Date(tx.timestamp), 'MMM dd'),
+        price: tx.price,
+        quantity: tx.quantity,
+        type: tx.type,
+      }))
+  }, [transactions])
 
   // Calculate if price is going up or down
   const isPositive = useMemo(() => {
@@ -55,7 +87,7 @@ export function PriceChart({ data, height = 400, showGrid = true }: PriceChartPr
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart
+      <ComposedChart
         data={chartData}
         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
       >
@@ -116,6 +148,22 @@ export function PriceChart({ data, height = 400, showGrid = true }: PriceChartPr
           </linearGradient>
         </defs>
         
+        {/* Break-even line */}
+        {breakEvenPrice && (
+          <ReferenceLine
+            y={breakEvenPrice}
+            stroke="#f59e0b"
+            strokeDasharray="5 5"
+            strokeWidth={2}
+            label={{
+              value: `Break-even: ${formatCurrency(breakEvenPrice)}`,
+              fill: '#f59e0b',
+              fontSize: 12,
+              position: 'right',
+            }}
+          />
+        )}
+        
         <Area
           type="monotone"
           dataKey="price"
@@ -124,7 +172,15 @@ export function PriceChart({ data, height = 400, showGrid = true }: PriceChartPr
           fill="url(#colorPrice)"
           animationDuration={1000}
         />
-      </AreaChart>
+        
+        {/* Transaction markers */}
+        <Scatter
+          data={transactionPoints}
+          fill="#8b5cf6"
+          shape="circle"
+          r={6}
+        />
+      </ComposedChart>
     </ResponsiveContainer>
   )
 }
