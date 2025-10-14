@@ -211,27 +211,33 @@ export default function TransactionsPage() {
           ) : filteredTransactions.length > 0 ? (
             <div className="space-y-2">
               {/* Column Headers */}
-              <div className="flex items-center gap-3 px-3 pb-2 border-b border-white/5">
-                <div className="w-[60px]"></div>
-                <div className="min-w-[120px]"></div>
-                <div className="flex-1 grid grid-cols-5 gap-4 text-xs text-muted-foreground uppercase-label">
+              <div className="grid grid-cols-[60px_120px_1fr_100px] gap-3 px-3 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-white/10">
+                <div>Type</div>
+                <div>Asset</div>
+                <div className="grid grid-cols-6 gap-4">
                   <div>Portfolio</div>
                   <div>Date</div>
                   <div>Quantity</div>
-                  <div>Price</div>
-                  <div className="text-right">Total</div>
+                  <div>Buy Price</div>
+                  <div>Current Value</div>
+                  <div className="text-right">ROI</div>
                 </div>
+                <div className="text-right">Actions</div>
               </div>
 
               {/* Transaction Rows */}
               {filteredTransactions.map((tx) => {
                 const isProfit = tx.type === 'buy' || tx.type === 'transfer_in'
+                const currentPrice = tx.assets?.current_price || 0
+                const currentValue = tx.quantity * currentPrice
+                const buyValue = tx.quantity * tx.price
+                const roi = buyValue > 0 ? ((currentValue - buyValue) / buyValue) * 100 : 0
+                const roiAmount = currentValue - buyValue
                 
                 return (
-                  <Link
+                  <div
                     key={tx.id}
-                    href={`/dashboard/assets/${tx.asset_id}`}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-white/5 group"
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors border border-white/5 group relative"
                   >
                     <div className={cn(
                       "px-2 py-1 rounded text-xs font-semibold uppercase w-[60px] text-center",
@@ -255,7 +261,7 @@ export default function TransactionsPage() {
                       <span className="font-medium text-sm">{tx.assets?.symbol}</span>
                     </div>
 
-                    <div className="flex-1 grid grid-cols-5 gap-4 text-sm">
+                    <div className="flex-1 grid grid-cols-6 gap-4 text-sm items-center">
                       <div className="text-muted-foreground truncate">
                         {tx.portfolios?.name || 'Unknown'}
                       </div>
@@ -264,11 +270,42 @@ export default function TransactionsPage() {
                       </div>
                       <Number className="font-medium">{formatNumber(tx.quantity)}</Number>
                       <Number className="font-medium">{formatCurrency(tx.price)}</Number>
-                      <Number className="font-semibold text-right">
-                        {formatCurrency(tx.quantity * tx.price)}
-                      </Number>
+                      <Number className="font-medium">{formatCurrency(currentValue)}</Number>
+                      <div className={cn(
+                        "text-right font-semibold",
+                        roi > 0 ? "text-profit" : roi < 0 ? "text-loss" : "text-muted-foreground"
+                      )}>
+                        <div>{roi > 0 ? '+' : ''}{roi.toFixed(2)}%</div>
+                        <div className="text-xs">
+                          {roiAmount > 0 ? '+' : ''}{formatCurrency(roiAmount)}
+                        </div>
+                      </div>
                     </div>
-                  </Link>
+
+                    {/* Edit/Delete buttons - show on hover */}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // TODO: Open edit dialog
+                        }}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          // TODO: Confirm and delete
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4 text-loss" />
+                      </Button>
+                    </div>
+                  </div>
                 )
               })}
             </div>
