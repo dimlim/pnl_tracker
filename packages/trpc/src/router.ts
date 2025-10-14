@@ -372,25 +372,57 @@ export const appRouter = t.router({
         const portfolioIds = portfolios.map(p => p.id)
         console.log('[Dashboard] Portfolio IDs:', portfolioIds)
 
-        // Get all positions
-        const { data: positions, error: positionsError } = await ctx.supabase
-          .from('positions')
+        // Get all transactions to calculate positions
+        const { data: allTransactions, error: txError } = await ctx.supabase
+          .from('transactions')
           .select('*, assets(*)')
           .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: true })
 
-        console.log('[Dashboard] Positions found:', positions?.length || 0)
+        console.log('[Dashboard] Transactions found:', allTransactions?.length || 0)
 
-        if (positionsError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: positionsError.message })
+        if (txError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: txError.message })
+
+        // Calculate positions from transactions
+        const positionsMap = new Map<number, {
+          asset_id: number
+          quantity: number
+          total_cost: number
+          assets: any
+        }>()
+
+        allTransactions?.forEach((tx: any) => {
+          const existing = positionsMap.get(tx.asset_id) || {
+            asset_id: tx.asset_id,
+            quantity: 0,
+            total_cost: 0,
+            assets: tx.assets,
+          }
+
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            existing.quantity += tx.quantity
+            existing.total_cost += tx.quantity * tx.price + (tx.fee || 0)
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            const avgPrice = existing.quantity > 0 ? existing.total_cost / existing.quantity : 0
+            existing.quantity -= tx.quantity
+            existing.total_cost -= tx.quantity * avgPrice
+          }
+
+          positionsMap.set(tx.asset_id, existing)
+        })
 
         // Calculate total value and P&L
         let totalValue = 0
         let totalCost = 0
         const performersMap = new Map<string, { asset: any, value: number, pnl: number, pnlPercent: number }>()
 
-        positions?.forEach((pos: any) => {
+        positionsMap.forEach((pos) => {
+          if (pos.quantity <= 0.00000001) return // Skip zero positions
+
           const currentPrice = pos.assets?.current_price || 0
+          const avgPrice = pos.total_cost / pos.quantity
           const value = pos.quantity * currentPrice
-          const cost = pos.quantity * pos.avg_price
+          const cost = pos.quantity * avgPrice
           const pnl = value - cost
           const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0
 
@@ -398,7 +430,7 @@ export const appRouter = t.router({
           totalCost += cost
 
           // Track per asset for top performers
-          const assetKey = pos.asset_id
+          const assetKey = pos.asset_id.toString()
           if (performersMap.has(assetKey)) {
             const existing = performersMap.get(assetKey)!
             existing.value += value
@@ -429,7 +461,7 @@ export const appRouter = t.router({
           }))
 
         // Get recent transactions
-        const { data: transactions, error: transactionsError } = await ctx.supabase
+        const { data: recentTxs, error: transactionsError } = await ctx.supabase
           .from('transactions')
           .select('*, assets(*)')
           .in('portfolio_id', portfolioIds)
@@ -443,7 +475,7 @@ export const appRouter = t.router({
           totalPnL,
           pnlPercentage,
           portfolioCount: portfolios.length,
-          recentTransactions: transactions || [],
+          recentTransactions: recentTxs || [],
           topPerformers,
         }
       } catch (error) {
