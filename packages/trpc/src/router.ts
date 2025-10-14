@@ -497,6 +497,42 @@ export const appRouter = t.router({
         return data as Transaction
       }),
 
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          quantity: z.number().positive().optional(),
+          price: z.number().nonnegative().optional(),
+          fee: z.number().nonnegative().optional(),
+          timestamp: z.string().or(z.date()).optional(),
+          note: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...updates } = input
+        
+        // Verify transaction ownership through portfolio
+        const { data: transaction } = await ctx.supabase
+          .from('transactions')
+          .select('portfolio_id, portfolios!inner(user_id)')
+          .eq('id', id)
+          .single()
+
+        if (!transaction || (transaction as any).portfolios.user_id !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Transaction not found' })
+        }
+
+        const { data, error } = await ctx.supabase
+          .from('transactions')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return data as Transaction
+      }),
+
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {

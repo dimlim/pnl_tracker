@@ -27,6 +27,7 @@ import { SeedPricesButton } from '@/components/admin/seed-prices-button'
 import { TransactionFilters, type FilterState } from '@/components/transactions/transaction-filters'
 import { exportTransactionsToExcel } from '@/lib/export'
 import { AddAssetTransactionDialog } from '@/components/transactions/add-asset-transaction-dialog'
+import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
 
 export default function AssetDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -566,6 +567,8 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
                               </div>
                             </div>
                           )}
+                          
+                          <EditTransactionDialog transaction={tx} />
                         </div>
                       </div>
                     )
