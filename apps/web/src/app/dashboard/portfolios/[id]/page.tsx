@@ -1,0 +1,253 @@
+'use client'
+
+import { use } from 'react'
+import Link from 'next/link'
+import { trpc } from '@/lib/trpc/client'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ArrowLeft, TrendingUp, TrendingDown, Wallet, Plus } from 'lucide-react'
+import { formatCurrency, formatNumber, cn } from '@/lib/utils'
+import { format } from 'date-fns'
+
+export default function PortfolioDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  
+  const { data: portfolio, isLoading: portfolioLoading } = trpc.portfolios.getById.useQuery({ id })
+  const { data: positions, isLoading: positionsLoading } = trpc.positions.list.useQuery(
+    { portfolio_id: id },
+    { enabled: !!id }
+  )
+  const { data: transactions, isLoading: transactionsLoading } = trpc.transactions.list.useQuery(
+    { portfolio_id: id },
+    { enabled: !!id }
+  )
+
+  if (portfolioLoading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="h-8 w-64 bg-white/5 rounded animate-pulse" />
+        <div className="grid gap-6 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 glass rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!portfolio) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Portfolio not found</p>
+        <Button asChild className="mt-4">
+          <Link href="/dashboard/portfolios">Back to Portfolios</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  // Calculate totals
+  const totalValue = positions?.reduce((sum, pos) => sum + (pos.quantity * (pos.assets?.current_price || 0)), 0) || 0
+  const totalCost = positions?.reduce((sum, pos) => sum + (pos.avg_price * pos.quantity), 0) || 0
+  const totalPnL = totalValue - totalCost
+  const totalPnLPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/dashboard/portfolios">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">{portfolio.name}</h1>
+            <p className="text-muted-foreground mt-2">
+              {portfolio.pnl_method.toUpperCase()} • {portfolio.base_currency}
+              {portfolio.include_fees && ' • Fees included'}
+            </p>
+          </div>
+        </div>
+
+        <Button asChild>
+          <Link href="/dashboard/transactions">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Transaction
+          </Link>
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="glass-strong border-white/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">{formatCurrency(totalValue)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Cost: {formatCurrency(totalCost)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-strong border-white/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
+            {totalPnL >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-profit" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-loss" />
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className={cn('text-2xl font-bold tabular-nums', totalPnL >= 0 ? 'text-profit' : 'text-loss')}>
+              {formatCurrency(totalPnL)}
+            </div>
+            <p className={cn('text-xs mt-1', totalPnL >= 0 ? 'text-profit' : 'text-loss')}>
+              {totalPnLPercent >= 0 ? '+' : ''}{totalPnLPercent.toFixed(2)}%
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-strong border-white/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Positions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold tabular-nums">{positions?.length || 0}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {transactions?.length || 0} transactions
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Positions */}
+      <Card className="glass-strong border-white/10">
+        <CardHeader>
+          <CardTitle>Positions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {positionsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-20 bg-white/5 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : positions && positions.length > 0 ? (
+            <div className="space-y-2">
+              {positions.map((position) => {
+                const currentPrice = position.assets?.current_price || 0
+                const currentValue = position.quantity * currentPrice
+                const cost = position.avg_price * position.quantity
+                const pnl = currentValue - cost
+                const pnlPercent = cost > 0 ? (pnl / cost) * 100 : 0
+
+                return (
+                  <div
+                    key={position.id}
+                    className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                        <span className="text-sm font-bold">{position.assets?.symbol.slice(0, 2)}</span>
+                      </div>
+                      <div>
+                        <div className="font-medium">{position.assets?.symbol}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatNumber(position.quantity)} @ {formatCurrency(position.avg_price)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-semibold tabular-nums">{formatCurrency(currentValue)}</div>
+                      <div className={cn('text-sm tabular-nums', pnl >= 0 ? 'text-profit' : 'text-loss')}>
+                        {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)} ({pnl >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%)
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No positions yet</p>
+              <Button asChild>
+                <Link href="/dashboard/transactions">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Transaction
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Transactions */}
+      <Card className="glass-strong border-white/10">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Recent Transactions</CardTitle>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/dashboard/transactions">View All</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {transactionsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 bg-white/5 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : transactions && transactions.length > 0 ? (
+            <div className="space-y-2">
+              {transactions.slice(0, 5).map((tx) => (
+                <div
+                  key={tx.id}
+                  className="flex items-center justify-between p-3 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      'w-8 h-8 rounded-full flex items-center justify-center',
+                      tx.type === 'buy' || tx.type === 'transfer_in' ? 'bg-profit/20' : 'bg-loss/20'
+                    )}>
+                      {tx.type === 'buy' || tx.type === 'transfer_in' ? (
+                        <TrendingUp className="w-4 h-4 text-profit" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-loss" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">
+                        {tx.assets.symbol} • {tx.type.toUpperCase()}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(tx.timestamp), 'MMM dd, yyyy')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium tabular-nums">
+                      {formatNumber(tx.quantity)} @ {formatCurrency(tx.price)}
+                    </div>
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      {formatCurrency(tx.quantity * tx.price)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No transactions yet</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
