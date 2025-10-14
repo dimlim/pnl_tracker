@@ -329,14 +329,19 @@ export const appRouter = t.router({
   // Dashboard
   dashboard: t.router({
     getStats: protectedProcedure.query(async ({ ctx }) => {
+      console.log('[Dashboard] Fetching stats for user:', ctx.user.id)
+      
       // Get all portfolios for user
       const { data: portfolios, error: portfoliosError } = await ctx.supabase
         .from('portfolios')
         .select('id')
         .eq('user_id', ctx.user.id)
 
+      console.log('[Dashboard] Portfolios found:', portfolios?.length || 0)
+
       if (portfoliosError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: portfoliosError.message })
       if (!portfolios || portfolios.length === 0) {
+        console.log('[Dashboard] No portfolios, returning zeros')
         return {
           totalValue: 0,
           totalPnL: 0,
@@ -348,12 +353,15 @@ export const appRouter = t.router({
       }
 
       const portfolioIds = portfolios.map(p => p.id)
+      console.log('[Dashboard] Portfolio IDs:', portfolioIds)
 
       // Get all positions
       const { data: positions, error: positionsError } = await ctx.supabase
         .from('positions')
         .select('*, assets(*)')
         .in('portfolio_id', portfolioIds)
+
+      console.log('[Dashboard] Positions found:', positions?.length || 0)
 
       if (positionsError) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: positionsError.message })
 

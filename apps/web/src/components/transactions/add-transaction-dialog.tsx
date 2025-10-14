@@ -35,11 +35,28 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
   const utils = trpc.useUtils()
   const { data: assets } = trpc.assets.list.useQuery()
   
-  // Filter assets based on search query
-  const filteredAssets = assets?.filter((a: any) => 
-    a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    a.name.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Filter and sort assets based on search query
+  const filteredAssets = assets
+    ?.filter((a: any) => 
+      a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a: any, b: any) => {
+      const query = searchQuery.toLowerCase()
+      const aSymbol = a.symbol.toLowerCase()
+      const bSymbol = b.symbol.toLowerCase()
+      
+      // Exact match first
+      if (aSymbol === query) return -1
+      if (bSymbol === query) return 1
+      
+      // Starts with query second
+      if (aSymbol.startsWith(query) && !bSymbol.startsWith(query)) return -1
+      if (bSymbol.startsWith(query) && !aSymbol.startsWith(query)) return 1
+      
+      // Alphabetical order
+      return aSymbol.localeCompare(bSymbol)
+    })
   
   const createTransaction = trpc.transactions.create.useMutation({
     onSuccess: () => {
