@@ -396,7 +396,7 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
           <DialogHeader>
             <DialogTitle>Delete Portfolio</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{portfolio?.name}"? This action cannot be undone and will delete all associated transactions.
+              Are you sure you want to delete &quot;{portfolio?.name}&quot;? This action cannot be undone and will delete all associated transactions.
             </DialogDescription>
           </DialogHeader>
 
