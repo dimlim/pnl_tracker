@@ -720,7 +720,7 @@ export const appRouter = t.router({
         // Calculate total value and P&L
         let totalValue = 0
         let totalCost = 0
-        const performersMap = new Map<string, { asset: any, value: number, pnl: number, pnlPercent: number }>()
+        const performersMap = new Map<string, { asset: any, value: number, pnl: number, pnlPercent: number, quantity: number, avgBuyPrice: number }>()
 
         positionsMap.forEach((pos) => {
           if (pos.quantity <= 0.00000001) return // Skip zero positions
@@ -739,8 +739,11 @@ export const appRouter = t.router({
           const assetKey = pos.asset_id.toString()
           if (performersMap.has(assetKey)) {
             const existing = performersMap.get(assetKey)!
+            existing.quantity += pos.quantity
             existing.value += value
             existing.pnl += pnl
+            const totalCost = existing.value - existing.pnl
+            existing.avgBuyPrice = existing.quantity > 0 ? totalCost / existing.quantity : 0
             existing.pnlPercent = existing.value > 0 ? (existing.pnl / (existing.value - existing.pnl)) * 100 : 0
           } else {
             performersMap.set(assetKey, {
@@ -748,6 +751,8 @@ export const appRouter = t.router({
               value,
               pnl,
               pnlPercent,
+              quantity: pos.quantity,
+              avgBuyPrice: avgPrice,
             })
           }
         })
@@ -764,6 +769,8 @@ export const appRouter = t.router({
             pnl: p.pnl,
             pnlPercent: p.pnlPercent,
             value: p.value,
+            quantity: p.quantity,
+            avgBuyPrice: p.avgBuyPrice,
           }))
 
         // Get recent transactions
