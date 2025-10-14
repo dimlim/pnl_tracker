@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,12 +31,15 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
   const [price, setPrice] = useState('')
   const [fee, setFee] = useState('')
   const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16))
+  const [coingeckoResults, setCoingeckoResults] = useState<any[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isAddingAsset, setIsAddingAsset] = useState(false)
 
   const utils = trpc.useUtils()
   const { data: assets } = trpc.assets.list.useQuery()
   
-  // Filter and sort assets based on search query
-  const filteredAssets = assets
+  // Filter local assets
+  const filteredLocalAssets = assets
     ?.filter((a: any) => 
       a.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -46,17 +49,63 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
       const aSymbol = a.symbol.toLowerCase()
       const bSymbol = b.symbol.toLowerCase()
       
-      // Exact match first
       if (aSymbol === query) return -1
       if (bSymbol === query) return 1
-      
-      // Starts with query second
       if (aSymbol.startsWith(query) && !bSymbol.startsWith(query)) return -1
       if (bSymbol.startsWith(query) && !aSymbol.startsWith(query)) return 1
-      
-      // Alphabetical order
       return aSymbol.localeCompare(bSymbol)
-    })
+    }) || []
+
+  // Search CoinGecko when query changes
+  useEffect(() => {
+    const searchCoinGecko = async () => {
+      if (searchQuery.length < 2) {
+        setCoingeckoResults([])
+        return
+      }
+
+      setIsSearching(true)
+      try {
+        const response = await fetch(`/api/crypto/search?query=${encodeURIComponent(searchQuery)}`)
+        const data = await response.json()
+        setCoingeckoResults(data.results || [])
+      } catch (error) {
+        console.error('Search error:', error)
+        setCoingeckoResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }
+
+    const debounce = setTimeout(searchCoinGecko, 300)
+    return () => clearTimeout(debounce)
+  }, [searchQuery])
+
+  // Add asset from CoinGecko
+  const handleAddAsset = async (coingeckoId: string) => {
+    setIsAddingAsset(true)
+    try {
+      const response = await fetch('/api/crypto/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coingeckoId }),
+      })
+      const data = await response.json()
+      
+      if (data.success) {
+        // Refresh assets list
+        await utils.assets.list.invalidate()
+        // Select the new asset
+        setSelectedAsset(data.asset.id.toString())
+        setSearchQuery(data.asset.symbol)
+        setCoingeckoResults([])
+      }
+    } catch (error) {
+      console.error('Add asset error:', error)
+    } finally {
+      setIsAddingAsset(false)
+    }
+  }
   
   const createTransaction = trpc.transactions.create.useMutation({
     onSuccess: () => {
@@ -132,34 +181,81 @@ export function AddTransactionDialog({ portfolioId, trigger }: AddTransactionDia
                   required
                 />
               </div>
-              {searchQuery && filteredAssets && filteredAssets.length > 0 && (
-                <div className="max-h-[200px] overflow-y-auto border border-white/10 rounded-lg bg-background">
-                  {filteredAssets.slice(0, 10).map((a: any) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedAsset(a.id.toString())
-                        setSearchQuery(a.symbol)
-                      }}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors text-left"
-                    >
-                      {a.icon_url ? (
-                        <img src={a.icon_url} alt={a.symbol} className="w-6 h-6 rounded-full" />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
-                          {a.symbol.slice(0, 1)}
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <div className="font-medium">{a.symbol}</div>
-                        <div className="text-sm text-muted-foreground">{a.name}</div>
+              {searchQuery && (filteredLocalAssets.length > 0 || coingeckoResults.length > 0 || isSearching) && (
+                <div className="max-h-[300px] overflow-y-auto border border-white/10 rounded-lg bg-background">
+                  {/* Local assets */}
+                  {filteredLocalAssets.length > 0 && (
+                    <>
+                      <div className="px-3 py-2 text-xs uppercase text-muted-foreground bg-white/5">
+                        Your Assets
                       </div>
-                    </button>
-                  ))}
+                      {filteredLocalAssets.slice(0, 5).map((a: any) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedAsset(a.id.toString())
+                            setSearchQuery(a.symbol)
+                          }}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors text-left"
+                        >
+                          {a.icon_url ? (
+                            <img src={a.icon_url} alt={a.symbol} className="w-6 h-6 rounded-full" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                              {a.symbol.slice(0, 1)}
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="font-medium">{a.symbol}</div>
+                            <div className="text-sm text-muted-foreground">{a.name}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {/* CoinGecko results */}
+                  {coingeckoResults.length > 0 && (
+                    <>
+                      <div className="px-3 py-2 text-xs uppercase text-muted-foreground bg-white/5">
+                        Add from CoinGecko
+                      </div>
+                      {coingeckoResults.map((coin: any) => (
+                        <button
+                          key={coin.id}
+                          type="button"
+                          onClick={() => handleAddAsset(coin.id)}
+                          disabled={isAddingAsset}
+                          className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors text-left disabled:opacity-50"
+                        >
+                          {coin.thumb ? (
+                            <img src={coin.thumb} alt={coin.symbol} className="w-6 h-6 rounded-full" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold">
+                              {coin.symbol.slice(0, 1)}
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="font-medium">{coin.symbol}</div>
+                            <div className="text-sm text-muted-foreground">{coin.name}</div>
+                          </div>
+                          <Plus className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Loading */}
+                  {isSearching && (
+                    <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Searching...
+                    </div>
+                  )}
                 </div>
               )}
-              {searchQuery && filteredAssets && filteredAssets.length === 0 && (
+              {searchQuery && !isSearching && filteredLocalAssets.length === 0 && coingeckoResults.length === 0 && (
                 <div className="p-3 text-center text-sm text-muted-foreground border border-white/10 rounded-lg">
                   No crypto found for &quot;{searchQuery}&quot;
                 </div>
