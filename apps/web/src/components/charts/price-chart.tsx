@@ -174,12 +174,16 @@ export function PriceChart({
         />
         
         {/* Transaction markers */}
-        <Scatter
-          data={transactionPoints}
-          fill="#8b5cf6"
-          shape="circle"
-          r={6}
-        />
+        {transactionPoints.length > 0 && (
+          <Scatter
+            name="Buy"
+            data={transactionPoints}
+            dataKey="price"
+            fill="#8b5cf6"
+            shape="circle"
+            r={6}
+          />
+        )}
       </ComposedChart>
     </ResponsiveContainer>
   )
