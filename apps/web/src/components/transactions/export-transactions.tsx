@@ -17,23 +17,23 @@ interface ExportTransactionsProps {
 
 export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
   const [isExporting, setIsExporting] = useState(false)
+  const utils = trpc.useUtils()
 
-  const { data: transactions } = trpc.transactions.list.useQuery(
-    portfolioId ? { portfolio_id: portfolioId } : {} as any,
-    {
-      enabled: true,
-    }
-  )
-
-  const exportToCSV = () => {
-    if (!transactions || transactions.length === 0) {
-      alert('No transactions to export')
-      return
-    }
-
+  const exportToCSV = async () => {
     setIsExporting(true)
 
     try {
+      // Fetch transactions
+      const transactions = portfolioId 
+        ? await utils.transactions.list.fetch({ portfolio_id: portfolioId })
+        : await utils.transactions.list.fetch({} as any)
+
+      if (!transactions || transactions.length === 0) {
+        alert('No transactions to export')
+        setIsExporting(false)
+        return
+      }
+
       // CSV Headers
       const headers = [
         'Date',
@@ -86,15 +86,21 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
     }
   }
 
-  const exportToJSON = () => {
-    if (!transactions || transactions.length === 0) {
-      alert('No transactions to export')
-      return
-    }
-
+  const exportToJSON = async () => {
     setIsExporting(true)
 
     try {
+      // Fetch transactions
+      const transactions = portfolioId 
+        ? await utils.transactions.list.fetch({ portfolio_id: portfolioId })
+        : await utils.transactions.list.fetch({} as any)
+
+      if (!transactions || transactions.length === 0) {
+        alert('No transactions to export')
+        setIsExporting(false)
+        return
+      }
+
       const jsonContent = JSON.stringify(transactions, null, 2)
       const blob = new Blob([jsonContent], { type: 'application/json' })
       const link = document.createElement('a')

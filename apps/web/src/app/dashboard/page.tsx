@@ -189,11 +189,9 @@ export default function DashboardPage() {
                   }}
                   onExport={async () => {
                     try {
-                      const response = await fetch(`/api/trpc/transactions.list?input=${encodeURIComponent(JSON.stringify({ portfolio_id: portfolio.id }))}`)
-                      const result = await response.json()
-                      const transactions = result.result?.data || []
+                      const transactions = await utils.transactions.list.fetch({ portfolio_id: portfolio.id })
 
-                      if (transactions.length === 0) {
+                      if (!transactions || transactions.length === 0) {
                         alert('No transactions to export')
                         return
                       }
