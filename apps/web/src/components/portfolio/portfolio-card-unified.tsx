@@ -18,6 +18,7 @@ import {
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { Sparkline } from '@/components/charts/sparkline'
+import { CryptoIcon } from '@/components/ui/crypto-icon'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -255,10 +256,10 @@ export function PortfolioCardUnified({
                 {topAssets.slice(0, 3).map((asset, i) => (
                   <div
                     key={i}
-                    className="w-6 h-6 rounded-full bg-white/10 border-2 border-background flex items-center justify-center text-xs font-semibold"
+                    className="w-6 h-6 rounded-full border-2 border-background overflow-hidden"
                     title={asset.symbol}
                   >
-                    {asset.symbol.slice(0, 2)}
+                    <CryptoIcon symbol={asset.symbol} size={24} />
                   </div>
                 ))}
               </div>

@@ -352,18 +352,36 @@ export const appRouter = t.router({
             positions.set(tx.asset_id, existing)
           })
 
-          // Calculate totals
+          // Calculate totals and get top assets
           let totalValue = 0
           let totalCost = 0
           let assetCount = 0
+          const assetValues: Array<{ assetId: number; value: number; symbol: string }> = []
 
-          positions.forEach((pos) => {
+          positions.forEach((pos, assetId) => {
             if (pos.quantity > 0) {
-              totalValue += pos.quantity * pos.currentPrice
+              const value = pos.quantity * pos.currentPrice
+              totalValue += value
               totalCost += pos.totalCost
               assetCount++
+              
+              // Find asset symbol
+              const assetTx = transactions.find((tx: any) => tx.asset_id === assetId)
+              if (assetTx) {
+                assetValues.push({
+                  assetId,
+                  value,
+                  symbol: assetTx.assets?.symbol || 'UNKNOWN',
+                })
+              }
             }
           })
+
+          // Sort by value and get top 3
+          const topAssets = assetValues
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 3)
+            .map(a => ({ symbol: a.symbol }))
 
           const totalPnL = totalValue - totalCost
           const pnlPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
@@ -376,6 +394,7 @@ export const appRouter = t.router({
               pnlPercent,
               assetCount,
             },
+            topAssets,
           }
         })
       )

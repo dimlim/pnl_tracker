@@ -154,6 +154,7 @@ export default function DashboardPage() {
                     pnlPercent: 0,
                     assetCount: 0,
                   }}
+                  topAssets={portfolio.topAssets}
                   sparklineData={[100, 105, 103, 108, 112, 110, 115]} // Mock data for now
                   index={index}
                 />
