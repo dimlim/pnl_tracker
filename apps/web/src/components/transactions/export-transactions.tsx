@@ -23,10 +23,13 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
     setIsExporting(true)
 
     try {
-      // Fetch transactions
-      const transactions = portfolioId 
-        ? await utils.transactions.list.fetch({ portfolio_id: portfolioId })
-        : await utils.transactions.list.fetch({} as any)
+      // Fetch all transactions (no filter if no portfolioId)
+      const allTransactions = await utils.transactions.list.fetch(undefined as any)
+      
+      // Filter by portfolio if needed
+      const transactions = portfolioId
+        ? allTransactions.filter((tx: any) => tx.portfolio_id === portfolioId)
+        : allTransactions
 
       if (!transactions || transactions.length === 0) {
         alert('No transactions to export')
@@ -90,10 +93,13 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
     setIsExporting(true)
 
     try {
-      // Fetch transactions
-      const transactions = portfolioId 
-        ? await utils.transactions.list.fetch({ portfolio_id: portfolioId })
-        : await utils.transactions.list.fetch({} as any)
+      // Fetch all transactions (no filter if no portfolioId)
+      const allTransactions = await utils.transactions.list.fetch(undefined as any)
+      
+      // Filter by portfolio if needed
+      const transactions = portfolioId
+        ? allTransactions.filter((tx: any) => tx.portfolio_id === portfolioId)
+        : allTransactions
 
       if (!transactions || transactions.length === 0) {
         alert('No transactions to export')
