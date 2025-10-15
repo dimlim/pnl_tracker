@@ -8,7 +8,7 @@ import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { PnLChart } from '@/components/charts/pnl-chart'
 import { PortfolioCardEnhanced } from '@/components/portfolio/portfolio-card-enhanced'
-import { DraggableDashboard } from '@/components/dashboard/draggable-dashboard'
+import { ManagedDashboard } from '@/components/dashboard/managed-dashboard'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -70,7 +70,9 @@ export default function DashboardPage() {
     {
       id: 'stats',
       title: 'Statistics',
+      description: 'Overview of your portfolio performance',
       defaultOrder: 0,
+      defaultEnabled: true,
       component: (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -108,7 +110,9 @@ export default function DashboardPage() {
     {
       id: 'chart',
       title: 'Performance Chart',
+      description: 'Track your portfolio value over time',
       defaultOrder: 1,
+      defaultEnabled: true,
       component: (
         <PnLChart 
           data={(portfolioHistory && 'data' in portfolioHistory) ? portfolioHistory.data : []}
@@ -121,7 +125,9 @@ export default function DashboardPage() {
     {
       id: 'portfolios',
       title: 'Your Portfolios',
+      description: 'Manage and track your crypto investments',
       defaultOrder: 2,
+      defaultEnabled: true,
       component: (
         <div>
           <div className="flex items-center justify-between mb-6">
@@ -217,10 +223,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Draggable Dashboard Widgets */}
-      <DraggableDashboard 
+      {/* Managed Dashboard Widgets */}
+      <ManagedDashboard 
         widgets={dashboardWidgets}
-        storageKey="crypto-pnl-dashboard-layout"
+        storageKey="crypto-pnl-dashboard-config"
       />
 
       {/* Main Content Grid */}
