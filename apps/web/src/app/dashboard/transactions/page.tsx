@@ -19,9 +19,20 @@ export default function TransactionsPage() {
   const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
   const [filterType, setFilterType] = useState<string>('all')
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<any>(null)
+  const [deletingTransactionId, setDeletingTransactionId] = useState<number | null>(null)
 
+  const utils = trpc.useUtils()
   const { data: portfolios } = trpc.portfolios.list.useQuery()
   const { data: allTransactions, isLoading } = trpc.transactions.listAll.useQuery()
+
+  const deleteTransaction = trpc.transactions.delete.useMutation({
+    onSuccess: () => {
+      utils.transactions.listAll.invalidate()
+      utils.positions.list.invalidate()
+      setDeletingTransactionId(null)
+    },
+  })
 
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
@@ -289,8 +300,9 @@ export default function TransactionsPage() {
                         variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation()
-                          // TODO: Open edit dialog
+                          setEditingTransaction(tx)
                         }}
+                        title="Edit transaction"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -299,10 +311,18 @@ export default function TransactionsPage() {
                         variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation()
-                          // TODO: Confirm and delete
+                          if (confirm(`Delete this ${tx.type} transaction for ${tx.quantity} ${tx.assets?.symbol}?`)) {
+                            deleteTransaction.mutate({ id: tx.id })
+                          }
                         }}
+                        disabled={deleteTransaction.isPending}
+                        title="Delete transaction"
                       >
-                        <Trash2 className="w-4 h-4 text-loss" />
+                        {deleteTransaction.isPending && deletingTransactionId === tx.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 text-loss" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -324,6 +344,16 @@ export default function TransactionsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Transaction Dialog */}
+      {editingTransaction && (
+        <AddTransactionDialog
+          open={!!editingTransaction}
+          onOpenChange={(open) => !open && setEditingTransaction(null)}
+          portfolioId={editingTransaction.portfolio_id}
+          // TODO: Pass transaction data for editing
+        />
+      )}
     </div>
   )
 }
