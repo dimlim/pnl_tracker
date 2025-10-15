@@ -12,6 +12,16 @@ import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { Number } from '@/components/ui/number'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function TransactionsPage() {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null)
@@ -311,11 +321,7 @@ export default function TransactionsPage() {
                         variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (window.confirm(`Delete this ${tx.type} transaction for ${tx.quantity} ${tx.assets?.symbol}?`)) {
-                            if (tx.id) {
-                              deleteTransaction.mutate({ id: tx.id })
-                            }
-                          }
+                          setDeletingTransactionId(tx.id)
                         }}
                         disabled={deleteTransaction.isPending}
                         title="Delete transaction"
@@ -356,6 +362,31 @@ export default function TransactionsPage() {
           transaction={editingTransaction}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingTransactionId} onOpenChange={(open) => !open && setDeletingTransactionId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this transaction from your portfolio.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletingTransactionId) {
+                  deleteTransaction.mutate({ id: deletingTransactionId })
+                }
+              }}
+              className="bg-loss hover:bg-loss/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
