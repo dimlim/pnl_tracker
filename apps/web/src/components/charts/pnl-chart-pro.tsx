@@ -83,13 +83,21 @@ export function PnLChartPro({
 
   // Transform data for chart with memoization
   const chartData = useMemo(() => {
-    if (!data || data.length === 0) return []
+    if (!data || data.length === 0) {
+      console.log('[PnLChartPro] No data:', data)
+      return []
+    }
     
-    return data.map((point) => ({
+    console.log('[PnLChartPro] Raw data:', data)
+    
+    const transformed = data.map((point) => ({
       ...point,
       dateFormatted: format(new Date(point.t), 'MMM dd'),
       timeFormatted: format(new Date(point.t), 'HH:mm'),
     }))
+    
+    console.log('[PnLChartPro] Transformed data:', transformed)
+    return transformed
   }, [data])
 
   // Calculate stats with memoization
