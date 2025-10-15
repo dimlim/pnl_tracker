@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Wallet, Loader2 } from 'lucide-react'
-import { PortfolioCard } from '@/components/portfolio/portfolio-card'
+import { PortfolioCardEnhanced } from '@/components/portfolio/portfolio-card-enhanced'
 
 export default function PortfoliosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -27,10 +27,10 @@ export default function PortfoliosPage() {
   const [includeFees, setIncludeFees] = useState(true)
 
   const utils = trpc.useUtils()
-  const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
+  const { data: portfolios, isLoading } = trpc.portfolios.listWithStats.useQuery()
   const createPortfolio = trpc.portfolios.create.useMutation({
     onSuccess: () => {
-      utils.portfolios.list.invalidate()
+      utils.portfolios.listWithStats.invalidate()
       setDialogOpen(false)
       setName('')
     },
@@ -156,8 +156,18 @@ export default function PortfoliosPage() {
         </div>
       ) : portfolios && portfolios.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {portfolios.map((portfolio) => (
-            <PortfolioCard key={portfolio.id} portfolio={portfolio} />
+          {portfolios.map((portfolio: any, index) => (
+            <PortfolioCardEnhanced 
+              key={portfolio.id} 
+              portfolio={portfolio}
+              stats={portfolio.stats || {
+                totalValue: 0,
+                totalPnL: 0,
+                pnlPercent: 0,
+                assetCount: 0,
+              }}
+              index={index}
+            />
           ))}
         </div>
       ) : (
