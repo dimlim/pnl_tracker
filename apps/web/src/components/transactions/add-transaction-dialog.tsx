@@ -22,23 +22,30 @@ interface AddTransactionDialogProps {
   trigger?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  transaction?: any // Transaction to edit
 }
 
-export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen, onOpenChange }: AddTransactionDialogProps) {
+export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen, onOpenChange, transaction }: AddTransactionDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = externalOpen !== undefined ? externalOpen : internalOpen
   const setOpen = onOpenChange || setInternalOpen
-  const [type, setType] = useState<'buy' | 'sell' | 'transfer_in' | 'transfer_out'>('buy')
-  const [selectedAsset, setSelectedAsset] = useState('')
+  const isEditing = !!transaction
+  
+  const [type, setType] = useState<'buy' | 'sell' | 'transfer_in' | 'transfer_out'>(transaction?.type || 'buy')
+  const [selectedAsset, setSelectedAsset] = useState(transaction?.asset_id?.toString() || '')
   const [searchQuery, setSearchQuery] = useState('')
-  const [quantity, setQuantity] = useState('')
-  const [price, setPrice] = useState('')
-  const [fee, setFee] = useState('')
-  const [timestamp, setTimestamp] = useState(new Date().toISOString().slice(0, 16))
+  const [quantity, setQuantity] = useState(transaction?.quantity?.toString() || '')
+  const [price, setPrice] = useState(transaction?.price?.toString() || '')
+  const [fee, setFee] = useState(transaction?.fee?.toString() || '')
+  const [timestamp, setTimestamp] = useState(
+    transaction?.timestamp 
+      ? new Date(transaction.timestamp).toISOString().slice(0, 16)
+      : new Date().toISOString().slice(0, 16)
+  )
   const [coingeckoResults, setCoingeckoResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isAddingAsset, setIsAddingAsset] = useState(false)
-  const [selectedPortfolio, setSelectedPortfolio] = useState(portfolioId || '')
+  const [selectedPortfolio, setSelectedPortfolio] = useState(portfolioId || transaction?.portfolio_id || '')
 
   const utils = trpc.useUtils()
   const { data: assets } = trpc.assets.list.useQuery()
@@ -133,6 +140,7 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
   const createTransaction = trpc.transactions.create.useMutation({
     onSuccess: () => {
       utils.transactions.list.invalidate()
+      utils.transactions.listAll.invalidate()
       utils.positions.list.invalidate()
       setOpen(false)
       // Reset form
@@ -144,19 +152,40 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
     },
   })
 
+  const updateTransaction = trpc.transactions.update.useMutation({
+    onSuccess: () => {
+      utils.transactions.list.invalidate()
+      utils.transactions.listAll.invalidate()
+      utils.positions.list.invalidate()
+      setOpen(false)
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedPortfolio || !selectedAsset) return
     
-    createTransaction.mutate({
-      portfolio_id: selectedPortfolio,
-      asset_id: parseInt(selectedAsset),
-      type,
-      quantity: parseFloat(quantity),
-      price: parseFloat(price),
-      fee: fee ? parseFloat(fee) : undefined,
-      timestamp: new Date(timestamp).toISOString(),
-    })
+    if (isEditing && transaction?.id) {
+      // Update existing transaction
+      updateTransaction.mutate({
+        id: transaction.id,
+        quantity: parseFloat(quantity),
+        price: parseFloat(price),
+        fee: fee ? parseFloat(fee) : undefined,
+        timestamp: new Date(timestamp).toISOString(),
+      })
+    } else {
+      // Create new transaction
+      createTransaction.mutate({
+        portfolio_id: selectedPortfolio,
+        asset_id: parseInt(selectedAsset),
+        type,
+        quantity: parseFloat(quantity),
+        price: parseFloat(price),
+        fee: fee ? parseFloat(fee) : undefined,
+        timestamp: new Date(timestamp).toISOString(),
+      })
+    }
   }
 
   return (
@@ -177,9 +206,12 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
       <DialogContent className="max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add Transaction</DialogTitle>
+            <DialogTitle>{isEditing ? 'Edit Transaction' : 'Add Transaction'}</DialogTitle>
             <DialogDescription>
-              {portfolioId ? 'Record a new transaction for this portfolio' : 'Record a new crypto transaction'}
+              {isEditing 
+                ? 'Update transaction details' 
+                : (portfolioId ? 'Record a new transaction for this portfolio' : 'Record a new crypto transaction')
+              }
             </DialogDescription>
           </DialogHeader>
 
@@ -388,14 +420,14 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={createTransaction.isPending}>
-              {createTransaction.isPending ? (
+            <Button type="submit" disabled={createTransaction.isPending || updateTransaction.isPending}>
+              {(createTransaction.isPending || updateTransaction.isPending) ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {isEditing ? 'Updating...' : 'Adding...'}
                 </>
               ) : (
-                'Add Transaction'
+                isEditing ? 'Update Transaction' : 'Add Transaction'
               )}
             </Button>
           </DialogFooter>

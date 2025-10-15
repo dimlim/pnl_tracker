@@ -353,7 +353,7 @@ export default function TransactionsPage() {
           open={!!editingTransaction}
           onOpenChange={(open) => !open && setEditingTransaction(null)}
           portfolioId={editingTransaction.portfolio_id}
-          // TODO: Pass transaction data for editing
+          transaction={editingTransaction}
         />
       )}
     </div>
