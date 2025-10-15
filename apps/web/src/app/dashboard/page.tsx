@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
-import { PnLChartPro } from '@/components/charts/pnl-chart-pro'
+import { PnLChart } from '@/components/charts/pnl-chart'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -132,18 +132,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* PnL Chart Pro */}
-      <PnLChartPro 
+      {/* PnL Chart */}
+      <PnLChart 
         data={(portfolioHistory && 'data' in portfolioHistory) ? portfolioHistory.data : []}
         isLoading={historyLoading}
         onTimeframeChange={setSelectedTimeframe}
-        onBenchmarkChange={setSelectedBenchmark}
         height={400}
-        transactions={dashboardStats?.recentTransactions?.map((tx: any) => ({
-          timestamp: tx.timestamp,
-          type: tx.type,
-          value: tx.price * tx.quantity,
-        })) || []}
       />
 
       {/* Main Content Grid */}
