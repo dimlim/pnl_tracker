@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { PnLChart } from '@/components/charts/pnl-chart'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -20,11 +21,18 @@ import {
 import Link from 'next/link'
 import { formatCurrency, formatPercentage, formatNumber, getPnLColor, cn } from '@/lib/utils'
 
+type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
+
 export default function DashboardPage() {
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
+  const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1M')
   
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: dashboardStats, isLoading: statsLoading, error: statsError } = trpc.dashboard.getStats.useQuery()
+  const { data: portfolioHistory, isLoading: historyLoading } = trpc.dashboard.getPortfolioHistory.useQuery(
+    { timeframe: selectedTimeframe },
+    { refetchOnWindowFocus: false }
+  )
 
   console.log('[CLIENT] Dashboard Stats:', {
     data: dashboardStats,
@@ -111,6 +119,14 @@ export default function DashboardPage() {
           iconColor={mockStats.dayChange >= 0 ? 'text-profit' : 'text-loss'}
         />
       </div>
+
+      {/* PnL Chart */}
+      <PnLChart 
+        data={portfolioHistory || []}
+        isLoading={historyLoading}
+        onTimeframeChange={setSelectedTimeframe}
+        height={350}
+      />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">

@@ -1,5 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import { z } from 'zod'
+import { format } from 'date-fns'
 import type { Context } from './context'
 import type { Portfolio, Transaction, Asset } from '@crypto-pnl/types'
 import { computePnL } from '@crypto-pnl/pnl-engine'
@@ -657,6 +658,156 @@ export const appRouter = t.router({
 
   // Dashboard
   dashboard: t.router({
+    getPortfolioHistory: protectedProcedure
+      .input(
+        z.object({
+          timeframe: z.enum(['1D', '1W', '1M', '3M', '1Y', 'ALL']).default('1M'),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        // Get all user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('user_id', ctx.user.id)
+
+        if (!portfolios || portfolios.length === 0) {
+          return []
+        }
+
+        const portfolioIds = portfolios.map(p => p.id)
+
+        // Calculate date range based on timeframe
+        const now = new Date()
+        let startDate = new Date()
+        
+        switch (input.timeframe) {
+          case '1D':
+            startDate.setDate(now.getDate() - 1)
+            break
+          case '1W':
+            startDate.setDate(now.getDate() - 7)
+            break
+          case '1M':
+            startDate.setMonth(now.getMonth() - 1)
+            break
+          case '3M':
+            startDate.setMonth(now.getMonth() - 3)
+            break
+          case '1Y':
+            startDate.setFullYear(now.getFullYear() - 1)
+            break
+          case 'ALL':
+            startDate = new Date(0) // Beginning of time
+            break
+        }
+
+        // Get all transactions in the timeframe
+        const { data: transactions } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(current_price, symbol)')
+          .in('portfolio_id', portfolioIds)
+          .gte('timestamp', startDate.toISOString())
+          .order('timestamp', { ascending: true })
+
+        if (!transactions || transactions.length === 0) {
+          return []
+        }
+
+        // Group transactions by day and calculate portfolio value
+        const dailyValues = new Map<string, { date: string, value: number, cost: number }>()
+        const positionsMap = new Map<number, { quantity: number, totalCost: number, currentPrice: number }>()
+
+        // Get all transactions before the timeframe to calculate initial positions
+        const { data: historicalTxs } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(current_price)')
+          .in('portfolio_id', portfolioIds)
+          .lt('timestamp', startDate.toISOString())
+          .order('timestamp', { ascending: true })
+
+        // Calculate initial positions
+        historicalTxs?.forEach((tx: any) => {
+          const existing = positionsMap.get(tx.asset_id) || { 
+            quantity: 0, 
+            totalCost: 0,
+            currentPrice: tx.assets?.current_price || 0 
+          }
+
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            existing.quantity += tx.quantity
+            existing.totalCost += tx.quantity * tx.price + (tx.fee || 0)
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            const avgPrice = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
+            existing.quantity -= tx.quantity
+            existing.totalCost -= tx.quantity * avgPrice
+          }
+
+          positionsMap.set(tx.asset_id, existing)
+        })
+
+        // Process transactions in timeframe
+        transactions.forEach((tx: any) => {
+          const dateKey = format(new Date(tx.timestamp), 'yyyy-MM-dd')
+          
+          const existing = positionsMap.get(tx.asset_id) || { 
+            quantity: 0, 
+            totalCost: 0,
+            currentPrice: tx.assets?.current_price || 0 
+          }
+
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            existing.quantity += tx.quantity
+            existing.totalCost += tx.quantity * tx.price + (tx.fee || 0)
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            const avgPrice = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
+            existing.quantity -= tx.quantity
+            existing.totalCost -= tx.quantity * avgPrice
+          }
+
+          existing.currentPrice = tx.assets?.current_price || existing.currentPrice
+          positionsMap.set(tx.asset_id, existing)
+
+          // Calculate total portfolio value at this point
+          let totalValue = 0
+          let totalCost = 0
+          positionsMap.forEach(pos => {
+            if (pos.quantity > 0) {
+              totalValue += pos.quantity * pos.currentPrice
+              totalCost += pos.totalCost
+            }
+          })
+
+          dailyValues.set(dateKey, { date: dateKey, value: totalValue, cost: totalCost })
+        })
+
+        // Convert to array and add current value
+        const historyArray = Array.from(dailyValues.values()).sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+
+        // Add today's value if not already present
+        const todayKey = format(now, 'yyyy-MM-dd')
+        if (!dailyValues.has(todayKey)) {
+          let totalValue = 0
+          let totalCost = 0
+          positionsMap.forEach(pos => {
+            if (pos.quantity > 0) {
+              totalValue += pos.quantity * pos.currentPrice
+              totalCost += pos.totalCost
+            }
+          })
+          historyArray.push({ date: todayKey, value: totalValue, cost: totalCost })
+        }
+
+        return historyArray.map(item => ({
+          date: item.date,
+          value: item.value,
+          pnl: item.value - item.cost,
+          pnlPercent: item.cost > 0 ? ((item.value - item.cost) / item.cost) * 100 : 0,
+        }))
+      }),
+
     getStats: protectedProcedure.query(async ({ ctx }) => {
       try {
         console.log('[Dashboard] Fetching stats for user:', ctx.user?.id)
