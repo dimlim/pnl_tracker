@@ -311,8 +311,10 @@ export default function TransactionsPage() {
                         variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation()
-                          if (confirm(`Delete this ${tx.type} transaction for ${tx.quantity} ${tx.assets?.symbol}?`)) {
-                            deleteTransaction.mutate({ id: tx.id })
+                          if (window.confirm(`Delete this ${tx.type} transaction for ${tx.quantity} ${tx.assets?.symbol}?`)) {
+                            if (tx.id) {
+                              deleteTransaction.mutate({ id: tx.id })
+                            }
                           }
                         }}
                         disabled={deleteTransaction.isPending}
