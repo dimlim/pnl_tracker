@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Wallet, TrendingUp, TrendingDown, Search, X, Loader2, Edit, Trash2 } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Search, X, Loader2, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
@@ -23,10 +23,28 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+type SortField = 'date' | 'asset' | 'type' | 'quantity' | 'price' | 'value' | 'roi'
+type SortDirection = 'asc' | 'desc' | null
+
+// Sort Icon Component
+const SortIcon = ({ field, currentField, direction }: { field: SortField, currentField: SortField, direction: SortDirection }) => {
+  if (currentField !== field) {
+    return <ArrowUpDown className="w-3 h-3 opacity-30" />
+  }
+  if (direction === 'asc') {
+    return <ArrowUp className="w-3 h-3" />
+  }
+  if (direction === 'desc') {
+    return <ArrowDown className="w-3 h-3" />
+  }
+  return <ArrowUpDown className="w-3 h-3 opacity-30" />
+}
+
 export default function TransactionsPage() {
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date')
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [filterType, setFilterType] = useState<string>('all')
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<any>(null)
@@ -43,6 +61,19 @@ export default function TransactionsPage() {
       setDeletingTransactionId(null)
     },
   })
+
+  // Toggle sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction: desc -> asc -> null -> desc
+      if (sortDirection === 'desc') setSortDirection('asc')
+      else if (sortDirection === 'asc') setSortDirection(null)
+      else setSortDirection('desc')
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
 
   // Filter and sort transactions
   const filteredTransactions = useMemo(() => {
@@ -69,16 +100,53 @@ export default function TransactionsPage() {
     }
 
     // Sort
-    filtered.sort((a, b) => {
-      if (sortBy === 'date') {
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      } else {
-        return (b.quantity * b.price) - (a.quantity * a.price)
-      }
-    })
+    if (sortDirection) {
+      filtered.sort((a, b) => {
+        let aVal: any, bVal: any
+
+        switch (sortField) {
+          case 'date':
+            aVal = new Date(a.timestamp).getTime()
+            bVal = new Date(b.timestamp).getTime()
+            break
+          case 'asset':
+            aVal = a.assets?.symbol || ''
+            bVal = b.assets?.symbol || ''
+            break
+          case 'type':
+            aVal = a.type
+            bVal = b.type
+            break
+          case 'quantity':
+            aVal = a.quantity
+            bVal = b.quantity
+            break
+          case 'price':
+            aVal = a.price
+            bVal = b.price
+            break
+          case 'value':
+            aVal = a.quantity * a.price
+            bVal = b.quantity * b.price
+            break
+          case 'roi':
+            const aCurrentPrice = a.assets?.current_price || a.price
+            const bCurrentPrice = b.assets?.current_price || b.price
+            aVal = ((aCurrentPrice - a.price) / a.price) * 100
+            bVal = ((bCurrentPrice - b.price) / b.price) * 100
+            break
+        }
+
+        if (sortDirection === 'asc') {
+          return aVal > bVal ? 1 : -1
+        } else {
+          return aVal < bVal ? 1 : -1
+        }
+      })
+    }
 
     return filtered
-  }, [allTransactions, selectedPortfolioId, filterType, searchQuery, sortBy])
+  }, [allTransactions, selectedPortfolioId, filterType, searchQuery, sortField, sortDirection])
 
   // Calculate portfolio stats
   const portfolioStats = useMemo(() => {
@@ -187,17 +255,6 @@ export default function TransactionsPage() {
               </SelectContent>
             </Select>
 
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Sort by Date</SelectItem>
-                <SelectItem value="amount">Sort by Amount</SelectItem>
-              </SelectContent>
-            </Select>
-
             {/* Clear Filters */}
             <Button
               variant="outline"
@@ -205,7 +262,8 @@ export default function TransactionsPage() {
                 setSelectedPortfolioId(null)
                 setSearchQuery('')
                 setFilterType('all')
-                setSortBy('date')
+                setSortField('date')
+                setSortDirection('desc')
               }}
             >
               Clear Filters
@@ -233,15 +291,57 @@ export default function TransactionsPage() {
             <div className="space-y-2">
               {/* Column Headers */}
               <div className="grid grid-cols-[60px_120px_1fr_100px] gap-3 px-3 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-white/10">
-                <div>Type</div>
-                <div>Asset</div>
+                <button 
+                  onClick={() => handleSort('type')}
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  Type
+                  <SortIcon field="type" currentField={sortField} direction={sortDirection} />
+                </button>
+                <button 
+                  onClick={() => handleSort('asset')}
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                >
+                  Asset
+                  <SortIcon field="asset" currentField={sortField} direction={sortDirection} />
+                </button>
                 <div className="grid grid-cols-6 gap-4">
                   <div>Portfolio</div>
-                  <div>Date</div>
-                  <div>Quantity</div>
-                  <div>Buy Price</div>
-                  <div>Current Value</div>
-                  <div className="text-right">ROI</div>
+                  <button 
+                    onClick={() => handleSort('date')}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    Date
+                    <SortIcon field="date" currentField={sortField} direction={sortDirection} />
+                  </button>
+                  <button 
+                    onClick={() => handleSort('quantity')}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    Quantity
+                    <SortIcon field="quantity" currentField={sortField} direction={sortDirection} />
+                  </button>
+                  <button 
+                    onClick={() => handleSort('price')}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    Buy Price
+                    <SortIcon field="price" currentField={sortField} direction={sortDirection} />
+                  </button>
+                  <button 
+                    onClick={() => handleSort('value')}
+                    className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    Current Value
+                    <SortIcon field="value" currentField={sortField} direction={sortDirection} />
+                  </button>
+                  <button 
+                    onClick={() => handleSort('roi')}
+                    className="flex items-center gap-1 justify-end hover:text-foreground transition-colors"
+                  >
+                    ROI
+                    <SortIcon field="roi" currentField={sortField} direction={sortDirection} />
+                  </button>
                 </div>
                 <div className="text-right">Actions</div>
               </div>
