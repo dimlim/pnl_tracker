@@ -31,7 +31,20 @@ export default function DashboardPage() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1M')
   const [selectedBenchmark, setSelectedBenchmark] = useState<Benchmark>('NONE')
   
+  const utils = trpc.useUtils()
   const { data: portfolios, isLoading } = trpc.portfolios.listWithStats.useQuery()
+  
+  const deletePortfolio = trpc.portfolios.delete.useMutation({
+    onSuccess: () => {
+      utils.portfolios.listWithStats.invalidate()
+    },
+  })
+  
+  const createPortfolio = trpc.portfolios.create.useMutation({
+    onSuccess: () => {
+      utils.portfolios.listWithStats.invalidate()
+    },
+  })
   const { data: dashboardStats, isLoading: statsLoading, error: statsError } = trpc.dashboard.getStats.useQuery()
   const { data: portfolioHistory, isLoading: historyLoading } = trpc.dashboard.getPortfolioHistory.useQuery(
     { 
@@ -157,18 +170,31 @@ export default function DashboardPage() {
                   topAssets={portfolio.topAssets}
                   sparklineData={[100, 105, 103, 108, 112, 110, 115]} // Mock data for now
                   index={index}
-                  onEdit={() => window.location.href = `/dashboard/portfolios/${portfolio.id}/edit`}
+                  onEdit={() => window.location.href = `/dashboard/portfolios/${portfolio.id}`}
                   onDelete={() => {
-                    if (confirm(`Delete portfolio "${portfolio.name}"?`)) {
-                      // TODO: Implement delete
-                      alert('Delete functionality coming soon!')
+                    if (confirm(`Delete portfolio "${portfolio.name}"? This action cannot be undone.`)) {
+                      deletePortfolio.mutate({ id: portfolio.id })
                     }
                   }}
                   onDuplicate={() => {
-                    alert('Duplicate functionality coming soon!')
+                    const newName = prompt('Enter name for duplicated portfolio:', `${portfolio.name} (Copy)`)
+                    if (newName) {
+                      createPortfolio.mutate({
+                        name: newName,
+                        base_currency: portfolio.base_currency,
+                        pnl_method: portfolio.pnl_method,
+                        include_fees: portfolio.include_fees || true,
+                      })
+                    }
                   }}
                   onExport={() => {
-                    alert('Export functionality coming soon!')
+                    const csv = `Portfolio: ${portfolio.name}\nMethod: ${portfolio.pnl_method}\nCurrency: ${portfolio.base_currency}\n\nExport functionality coming soon!`
+                    const blob = new Blob([csv], { type: 'text/csv' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `${portfolio.name.replace(/\s+/g, '_')}_export.csv`
+                    a.click()
                   }}
                 />
               ))}
