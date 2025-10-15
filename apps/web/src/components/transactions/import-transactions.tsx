@@ -99,7 +99,7 @@ export function ImportTransactions() {
             price: parseFloat(tx.price),
             fee: parseFloat(tx.fee || 0),
             timestamp: new Date(tx.timestamp || tx.date).toISOString(),
-            notes: tx.notes || null,
+            note: tx.notes || tx.note || null,
           })
           success++
         } catch (error) {
