@@ -329,7 +329,7 @@ export default function PortfoliosPage() {
                     `Exported: ${new Date().toISOString()}`,
                     '',
                     headers.join(','),
-                    ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+                    ...rows.map((row: any[]) => row.map((cell: any) => `"${cell}"`).join(','))
                   ].join('\n')
 
                   // Download

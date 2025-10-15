@@ -65,7 +65,7 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
       // Create CSV content
       const csvContent = [
         headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+        ...rows.map((row: any[]) => row.map((cell: any) => `"${cell}"`).join(',')),
       ].join('\n')
 
       // Download
