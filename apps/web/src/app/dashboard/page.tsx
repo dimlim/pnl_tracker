@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { PnLChart } from '@/components/charts/pnl-chart'
-import { PortfolioCardEnhanced } from '@/components/portfolio/portfolio-card-enhanced'
+import { PortfolioCardUnified } from '@/components/portfolio/portfolio-card-unified'
 import { ManagedDashboard } from '@/components/dashboard/managed-dashboard'
 import { trpc } from '@/lib/trpc/client'
 import { 
@@ -145,7 +145,7 @@ export default function DashboardPage() {
           ) : portfolios && portfolios.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {portfolios.map((portfolio: any, index) => (
-                <PortfolioCardEnhanced
+                <PortfolioCardUnified
                   key={portfolio.id}
                   portfolio={portfolio}
                   stats={portfolio.stats || {
@@ -154,6 +154,7 @@ export default function DashboardPage() {
                     pnlPercent: 0,
                     assetCount: 0,
                   }}
+                  sparklineData={[100, 105, 103, 108, 112, 110, 115]} // Mock data for now
                   index={index}
                 />
               ))}

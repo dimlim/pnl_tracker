@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatPercentage, cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
+import { Sparkline } from '@/components/charts/sparkline'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +47,7 @@ interface PortfolioCardUnifiedProps {
     symbol: string
     icon?: string
   }>
+  sparklineData?: number[]
   index: number
   onEdit?: () => void
   onDelete?: () => void
@@ -73,6 +75,7 @@ export function PortfolioCardUnified({
   portfolio, 
   stats, 
   topAssets,
+  sparklineData,
   index,
   onEdit,
   onDelete,
@@ -261,6 +264,16 @@ export function PortfolioCardUnified({
               </div>
             )}
           </div>
+
+          {/* Sparkline */}
+          {sparklineData && sparklineData.length > 0 && (
+            <div className="pt-3 border-t border-white/5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-muted-foreground">7-day trend</span>
+              </div>
+              <Sparkline data={sparklineData} />
+            </div>
+          )}
 
           {/* Last Updated */}
           {portfolio.updated_at && (
