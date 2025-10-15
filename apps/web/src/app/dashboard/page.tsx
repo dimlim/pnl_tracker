@@ -31,7 +31,7 @@ export default function DashboardPage() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1M')
   const [selectedBenchmark, setSelectedBenchmark] = useState<Benchmark>('NONE')
   
-  const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
+  const { data: portfolios, isLoading } = trpc.portfolios.listWithStats.useQuery()
   const { data: dashboardStats, isLoading: statsLoading, error: statsError } = trpc.dashboard.getStats.useQuery()
   const { data: portfolioHistory, isLoading: historyLoading } = trpc.dashboard.getPortfolioHistory.useQuery(
     { 
@@ -152,11 +152,11 @@ export default function DashboardPage() {
             </div>
           ) : portfolios && portfolios.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {portfolios.map((portfolio, index) => (
+              {portfolios.map((portfolio: any, index) => (
                 <PortfolioCardEnhanced
                   key={portfolio.id}
                   portfolio={portfolio}
-                  stats={{
+                  stats={portfolio.stats || {
                     totalValue: 0,
                     totalPnL: 0,
                     pnlPercent: 0,

@@ -297,6 +297,92 @@ export const appRouter = t.router({
       return data as Portfolio[]
     }),
 
+    listWithStats: protectedProcedure.query(async ({ ctx }) => {
+      const { data: portfolios, error } = await ctx.supabase
+        .from('portfolios')
+        .select('*')
+        .eq('user_id', ctx.user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+      if (!portfolios) return []
+
+      // Get stats for each portfolio
+      const portfoliosWithStats = await Promise.all(
+        portfolios.map(async (portfolio) => {
+          // Get all transactions for this portfolio
+          const { data: transactions } = await ctx.supabase
+            .from('transactions')
+            .select('*, assets(current_price)')
+            .eq('portfolio_id', portfolio.id)
+            .order('timestamp', { ascending: true })
+
+          if (!transactions || transactions.length === 0) {
+            return {
+              ...portfolio,
+              stats: {
+                totalValue: 0,
+                totalPnL: 0,
+                pnlPercent: 0,
+                assetCount: 0,
+              },
+            }
+          }
+
+          // Calculate positions
+          const positions = new Map<number, { quantity: number; totalCost: number; currentPrice: number }>()
+          
+          transactions.forEach((tx: any) => {
+            const existing = positions.get(tx.asset_id) || {
+              quantity: 0,
+              totalCost: 0,
+              currentPrice: tx.assets?.current_price || 0,
+            }
+
+            if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+              existing.quantity += tx.quantity
+              existing.totalCost += tx.quantity * tx.price + (tx.fee || 0)
+            } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+              const avgPrice = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
+              existing.quantity -= tx.quantity
+              existing.totalCost -= tx.quantity * avgPrice
+            }
+
+            existing.currentPrice = tx.assets?.current_price || existing.currentPrice
+            positions.set(tx.asset_id, existing)
+          })
+
+          // Calculate totals
+          let totalValue = 0
+          let totalCost = 0
+          let assetCount = 0
+
+          positions.forEach((pos) => {
+            if (pos.quantity > 0) {
+              totalValue += pos.quantity * pos.currentPrice
+              totalCost += pos.totalCost
+              assetCount++
+            }
+          })
+
+          const totalPnL = totalValue - totalCost
+          const pnlPercent = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+
+          return {
+            ...portfolio,
+            stats: {
+              totalValue,
+              totalPnL,
+              pnlPercent,
+              assetCount,
+            },
+          }
+        })
+      )
+
+      return portfoliosWithStats
+    }),
+
     get: protectedProcedure
       .input(z.object({ id: z.string().uuid() }))
       .query(async ({ ctx, input }) => {
