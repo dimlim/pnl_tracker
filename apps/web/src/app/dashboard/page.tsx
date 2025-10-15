@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { PnLChart } from '@/components/charts/pnl-chart'
 import { PortfolioCardEnhanced } from '@/components/portfolio/portfolio-card-enhanced'
+import { DraggableDashboard } from '@/components/dashboard/draggable-dashboard'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -64,6 +65,125 @@ export default function DashboardPage() {
   const allTransactions = dashboardStats?.recentTransactions ?? []
   const topPerformers = dashboardStats?.topPerformers ?? []
 
+  // Define dashboard widgets
+  const dashboardWidgets = useMemo(() => [
+    {
+      id: 'stats',
+      title: 'Statistics',
+      defaultOrder: 0,
+      component: (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Value"
+            value={formatCurrency(mockStats.totalValue)}
+            change={`${mockStats.dayChange >= 0 ? '+' : ''}${mockStats.dayChange}% today`}
+            changeType={mockStats.dayChange >= 0 ? 'positive' : 'negative'}
+            icon={Wallet}
+            iconColor="text-violet-400"
+          />
+          <StatCard
+            title="Total P&L"
+            value={formatCurrency(mockStats.totalPnL)}
+            change={formatPercentage(mockStats.pnlPercentage)}
+            changeType={mockStats.totalPnL >= 0 ? 'positive' : 'negative'}
+            icon={TrendingUp}
+            iconColor={mockStats.totalPnL >= 0 ? 'text-profit' : 'text-loss'}
+          />
+          <StatCard
+            title="Portfolios"
+            value={mockStats.portfolioCount.toString()}
+            icon={DollarSign}
+            iconColor="text-blue-400"
+          />
+          <StatCard
+            title="24h Change"
+            value={formatPercentage(mockStats.dayChange)}
+            changeType={mockStats.dayChange >= 0 ? 'positive' : 'negative'}
+            icon={Activity}
+            iconColor={mockStats.dayChange >= 0 ? 'text-profit' : 'text-loss'}
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'chart',
+      title: 'Performance Chart',
+      defaultOrder: 1,
+      component: (
+        <PnLChart 
+          data={(portfolioHistory && 'data' in portfolioHistory) ? portfolioHistory.data : []}
+          isLoading={historyLoading}
+          onTimeframeChange={setSelectedTimeframe}
+          height={400}
+        />
+      ),
+    },
+    {
+      id: 'portfolios',
+      title: 'Your Portfolios',
+      defaultOrder: 2,
+      component: (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">Your Portfolios</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and track your crypto investments
+              </p>
+            </div>
+            <Button asChild>
+              <Link href="/dashboard/portfolios/new">
+                <Plus className="w-4 h-4 mr-2" />
+                New Portfolio
+              </Link>
+            </Button>
+          </div>
+          {isLoading ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-48 bg-white/5 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : portfolios && portfolios.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {portfolios.map((portfolio, index) => (
+                <PortfolioCardEnhanced
+                  key={portfolio.id}
+                  portfolio={portfolio}
+                  stats={{
+                    totalValue: 0,
+                    totalPnL: 0,
+                    pnlPercent: 0,
+                    assetCount: 0,
+                  }}
+                  index={index}
+                />
+              ))}
+            </div>
+          ) : (
+            <Card className="glass-strong border-white/10">
+              <CardContent className="py-16">
+                <div className="text-center">
+                  <Wallet className="w-16 h-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">No portfolios yet</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Create your first portfolio to start tracking your crypto investments
+                  </p>
+                  <Button asChild size="lg">
+                    <Link href="/dashboard/portfolios/new">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Your First Portfolio
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      ),
+    },
+  ], [mockStats, portfolioHistory, historyLoading, portfolios, isLoading, setSelectedTimeframe])
+
   if (isLoading || statsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -97,109 +217,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Value"
-          value={formatCurrency(mockStats.totalValue)}
-          change={`${mockStats.dayChange >= 0 ? '+' : ''}${mockStats.dayChange}% today`}
-          changeType={mockStats.dayChange >= 0 ? 'positive' : 'negative'}
-          icon={Wallet}
-          iconColor="text-violet-400"
-        />
-        
-        <StatCard
-          title="Total P&L"
-          value={formatCurrency(mockStats.totalPnL)}
-          change={formatPercentage(mockStats.pnlPercentage)}
-          changeType={mockStats.totalPnL >= 0 ? 'positive' : 'negative'}
-          icon={TrendingUp}
-          iconColor={mockStats.totalPnL >= 0 ? 'text-profit' : 'text-loss'}
-        />
-        
-        <StatCard
-          title="Portfolios"
-          value={mockStats.portfolioCount.toString()}
-          icon={DollarSign}
-          iconColor="text-blue-400"
-        />
-        
-        <StatCard
-          title="24h Change"
-          value={formatPercentage(mockStats.dayChange)}
-          changeType={mockStats.dayChange >= 0 ? 'positive' : 'negative'}
-          icon={Activity}
-          iconColor={mockStats.dayChange >= 0 ? 'text-profit' : 'text-loss'}
-        />
-      </div>
-
-      {/* PnL Chart */}
-      <PnLChart 
-        data={(portfolioHistory && 'data' in portfolioHistory) ? portfolioHistory.data : []}
-        isLoading={historyLoading}
-        onTimeframeChange={setSelectedTimeframe}
-        height={400}
+      {/* Draggable Dashboard Widgets */}
+      <DraggableDashboard 
+        widgets={dashboardWidgets}
+        storageKey="crypto-pnl-dashboard-layout"
       />
-
-      {/* Portfolio Cards Grid */}
-      <div>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">Your Portfolios</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage and track your crypto investments
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/dashboard/portfolios/new">
-              <Plus className="w-4 h-4 mr-2" />
-              New Portfolio
-            </Link>
-          </Button>
-        </div>
-
-        {isLoading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-48 bg-white/5 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : portfolios && portfolios.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {portfolios.map((portfolio, index) => (
-              <PortfolioCardEnhanced
-                key={portfolio.id}
-                portfolio={portfolio}
-                stats={{
-                  totalValue: 0, // TODO: Calculate from positions
-                  totalPnL: 0,
-                  pnlPercent: 0,
-                  assetCount: 0,
-                }}
-                index={index}
-              />
-            ))}
-          </div>
-        ) : (
-          <Card className="glass-strong border-white/10">
-            <CardContent className="py-16">
-              <div className="text-center">
-                <Wallet className="w-16 h-16 mx-auto text-muted-foreground mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">No portfolios yet</h3>
-                <p className="text-muted-foreground mb-6">
-                  Create your first portfolio to start tracking your crypto investments
-                </p>
-                <Button asChild size="lg">
-                  <Link href="/dashboard/portfolios/new">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Your First Portfolio
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
