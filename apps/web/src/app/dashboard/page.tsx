@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { PnLChart } from '@/components/charts/pnl-chart'
+import { PortfolioCardEnhanced } from '@/components/portfolio/portfolio-card-enhanced'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -140,60 +141,68 @@ export default function DashboardPage() {
         height={400}
       />
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Portfolio Overview */}
-        <Card className="glass-strong border-white/10">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Your Portfolios</span>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard/portfolios">View All</Link>
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-white/5 rounded-lg animate-pulse" />
-                ))}
-              </div>
-            ) : portfolios && portfolios.length > 0 ? (
-              <div className="space-y-3">
-                {portfolios.slice(0, 5).map((portfolio) => (
-                  <Link
-                    key={portfolio.id}
-                    href={`/dashboard/portfolios/${portfolio.id}`}
-                    className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors group"
-                  >
-                    <div>
-                      <p className="font-medium group-hover:text-primary transition-colors">
-                        {portfolio.name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {portfolio.pnl_method.toUpperCase()} • {portfolio.base_currency}
-                      </p>
-                    </div>
-                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Wallet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">No portfolios yet</p>
-                <Button asChild>
+      {/* Portfolio Cards Grid */}
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">Your Portfolios</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage and track your crypto investments
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/dashboard/portfolios/new">
+              <Plus className="w-4 h-4 mr-2" />
+              New Portfolio
+            </Link>
+          </Button>
+        </div>
+
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-48 bg-white/5 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : portfolios && portfolios.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {portfolios.map((portfolio, index) => (
+              <PortfolioCardEnhanced
+                key={portfolio.id}
+                portfolio={portfolio}
+                stats={{
+                  totalValue: 0, // TODO: Calculate from positions
+                  totalPnL: 0,
+                  pnlPercent: 0,
+                  assetCount: 0,
+                }}
+                index={index}
+              />
+            ))}
+          </div>
+        ) : (
+          <Card className="glass-strong border-white/10">
+            <CardContent className="py-16">
+              <div className="text-center">
+                <Wallet className="w-16 h-16 mx-auto text-muted-foreground mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">No portfolios yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Create your first portfolio to start tracking your crypto investments
+                </p>
+                <Button asChild size="lg">
                   <Link href="/dashboard/portfolios/new">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Your First Portfolio
                   </Link>
                 </Button>
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Recent Activity */}
         <Card className="glass-strong border-white/10">
           <CardHeader>
