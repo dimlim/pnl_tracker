@@ -187,7 +187,7 @@ export function PortfolioCardUnified({
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Portfolio Value</span>
             <span className="text-lg font-bold font-mono">
-              {formatCurrency(stats.totalValue)}
+              {formatCurrency(stats.totalValue, portfolio.base_currency)}
             </span>
           </div>
 
@@ -205,7 +205,7 @@ export function PortfolioCardUnified({
                   "text-sm font-semibold font-mono",
                   isDayProfit ? "text-profit" : "text-loss"
                 )}>
-                  {formatCurrency(stats.dayChange)}
+                  {formatCurrency(stats.dayChange, portfolio.base_currency)}
                 </span>
                 <span className={cn(
                   "text-xs",
@@ -230,7 +230,7 @@ export function PortfolioCardUnified({
                 "text-sm font-semibold font-mono",
                 isProfit ? "text-profit" : "text-loss"
               )}>
-                {formatCurrency(stats.totalPnL)}
+                {formatCurrency(stats.totalPnL, portfolio.base_currency)}
               </span>
               <span className={cn(
                 "text-xs font-semibold",
