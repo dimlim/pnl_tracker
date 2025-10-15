@@ -11,6 +11,8 @@ import { Wallet, TrendingUp, TrendingDown, Search, X, Loader2, Edit, Trash2, Arr
 import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { ExportTransactions } from '@/components/transactions/export-transactions'
+import { ImportTransactions } from '@/components/transactions/import-transactions'
 import { Number } from '@/components/ui/number'
 import {
   AlertDialog,
@@ -178,15 +180,19 @@ export default function TransactionsPage() {
           <p className="text-muted-foreground mt-2">Track all your crypto transactions</p>
         </div>
 
-        <AddTransactionDialog 
-          open={isTransactionDialogOpen}
-          onOpenChange={setIsTransactionDialogOpen}
-          trigger={
-            <Button>
-              Add Transaction
-            </Button>
-          }
-        />
+        <div className="flex gap-2">
+          <ImportTransactions />
+          <ExportTransactions portfolioId={selectedPortfolioId || undefined} />
+          <AddTransactionDialog 
+            open={isTransactionDialogOpen}
+            onOpenChange={setIsTransactionDialogOpen}
+            trigger={
+              <Button>
+                Add Transaction
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       {/* Portfolio Cards */}
