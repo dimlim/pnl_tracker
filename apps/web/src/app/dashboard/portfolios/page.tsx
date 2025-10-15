@@ -167,17 +167,17 @@ export default function PortfoliosPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="currency">Base Currency</Label>
-                  <Select value={baseCurrency} onValueChange={setBaseCurrency}>
+                  <Select value={baseCurrency} onValueChange={setBaseCurrency} disabled>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="BTC">BTC</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    All prices and values are displayed in USD
+                  </p>
                 </div>
 
                 <div className="space-y-2">
