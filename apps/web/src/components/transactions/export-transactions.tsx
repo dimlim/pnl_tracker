@@ -19,7 +19,10 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
   const [isExporting, setIsExporting] = useState(false)
 
   const { data: transactions } = trpc.transactions.list.useQuery(
-    portfolioId ? { portfolio_id: portfolioId } : undefined as any
+    portfolioId ? { portfolio_id: portfolioId } : {} as any,
+    {
+      enabled: true,
+    }
   )
 
   const exportToCSV = () => {
@@ -35,7 +38,8 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
       const headers = [
         'Date',
         'Type',
-        'Asset',
+        'Symbol',
+        'Asset Name',
         'Quantity',
         'Price',
         'Fee',
@@ -49,12 +53,13 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
         new Date(tx.timestamp).toISOString(),
         tx.type,
         tx.assets?.symbol || '',
+        tx.assets?.name || '',
         tx.quantity,
         tx.price,
         tx.fee || 0,
         tx.quantity * tx.price + (tx.fee || 0),
         tx.portfolios?.name || '',
-        tx.notes || '',
+        tx.note || '',
       ])
 
       // Create CSV content

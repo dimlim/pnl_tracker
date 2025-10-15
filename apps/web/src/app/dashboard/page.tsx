@@ -187,14 +187,51 @@ export default function DashboardPage() {
                       })
                     }
                   }}
-                  onExport={() => {
-                    const csv = `Portfolio: ${portfolio.name}\nMethod: ${portfolio.pnl_method}\nCurrency: ${portfolio.base_currency}\n\nExport functionality coming soon!`
-                    const blob = new Blob([csv], { type: 'text/csv' })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `${portfolio.name.replace(/\s+/g, '_')}_export.csv`
-                    a.click()
+                  onExport={async () => {
+                    try {
+                      const response = await fetch(`/api/trpc/transactions.list?input=${encodeURIComponent(JSON.stringify({ portfolio_id: portfolio.id }))}`)
+                      const result = await response.json()
+                      const transactions = result.result?.data || []
+
+                      if (transactions.length === 0) {
+                        alert('No transactions to export')
+                        return
+                      }
+
+                      const headers = ['Date', 'Type', 'Asset', 'Symbol', 'Quantity', 'Price', 'Fee', 'Total', 'Notes']
+                      const rows = transactions.map((tx: any) => [
+                        new Date(tx.timestamp).toISOString(),
+                        tx.type,
+                        tx.assets?.name || '',
+                        tx.assets?.symbol || '',
+                        tx.quantity,
+                        tx.price,
+                        tx.fee || 0,
+                        (tx.quantity * tx.price) + (tx.fee || 0),
+                        tx.note || ''
+                      ])
+
+                      const csvContent = [
+                        `Portfolio: ${portfolio.name}`,
+                        `Method: ${portfolio.pnl_method}`,
+                        `Currency: ${portfolio.base_currency}`,
+                        `Exported: ${new Date().toISOString()}`,
+                        '',
+                        headers.join(','),
+                        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+                      ].join('\n')
+
+                      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `${portfolio.name.replace(/\s+/g, '_')}_${Date.now()}.csv`
+                      a.click()
+                      URL.revokeObjectURL(url)
+                    } catch (error) {
+                      console.error('Export failed:', error)
+                      alert('Failed to export portfolio')
+                    }
                   }}
                 />
               ))}
