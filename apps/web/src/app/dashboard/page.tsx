@@ -45,6 +45,13 @@ export default function DashboardPage() {
     error: statsError,
   })
 
+  console.log('[CLIENT] Portfolio History:', {
+    data: portfolioHistory,
+    loading: historyLoading,
+    hasData: portfolioHistory && 'data' in portfolioHistory,
+    dataLength: (portfolioHistory && 'data' in portfolioHistory) ? portfolioHistory.data.length : 0,
+  })
+
   const mockStats = {
     totalValue: dashboardStats?.totalValue ?? 0,
     totalPnL: dashboardStats?.totalPnL ?? 0,

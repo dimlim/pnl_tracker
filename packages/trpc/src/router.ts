@@ -712,8 +712,71 @@ export const appRouter = t.router({
           .gte('timestamp', startDate.toISOString())
           .order('timestamp', { ascending: true })
 
+        // If no transactions in timeframe, return current state as single point
         if (!transactions || transactions.length === 0) {
-          return []
+          // Get current portfolio value
+          const { data: allTxs } = await ctx.supabase
+            .from('transactions')
+            .select('*, assets(current_price)')
+            .in('portfolio_id', portfolioIds)
+            .order('timestamp', { ascending: true })
+
+          if (!allTxs || allTxs.length === 0) {
+            return {
+              data: [],
+              granularity: input.granularity || '1d',
+              benchmark: input.benchmark,
+            }
+          }
+
+          // Calculate current position
+          const currentPositions = new Map<number, { quantity: number, totalCost: number, currentPrice: number }>()
+          allTxs.forEach((tx: any) => {
+            const existing = currentPositions.get(tx.asset_id) || { 
+              quantity: 0, 
+              totalCost: 0,
+              currentPrice: tx.assets?.current_price || 0 
+            }
+
+            if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+              existing.quantity += tx.quantity
+              existing.totalCost += tx.quantity * tx.price + (tx.fee || 0)
+            } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+              const avgPrice = existing.quantity > 0 ? existing.totalCost / existing.quantity : 0
+              existing.quantity -= tx.quantity
+              existing.totalCost -= tx.quantity * avgPrice
+            }
+
+            existing.currentPrice = tx.assets?.current_price || existing.currentPrice
+            currentPositions.set(tx.asset_id, existing)
+          })
+
+          let totalValue = 0
+          let totalCost = 0
+          currentPositions.forEach(pos => {
+            if (pos.quantity > 0) {
+              totalValue += pos.quantity * pos.currentPrice
+              totalCost += pos.totalCost
+            }
+          })
+
+          const unrealizedPnL = totalValue - totalCost
+          const todayKey = format(now, 'yyyy-MM-dd')
+
+          return {
+            data: [{
+              t: now.getTime(),
+              date: todayKey,
+              value: totalValue,
+              invested: totalCost,
+              pnl: unrealizedPnL,
+              realized: 0,
+              unrealized: unrealizedPnL,
+              pnlPercent: totalCost > 0 ? (unrealizedPnL / totalCost) * 100 : 0,
+            }],
+            granularity: input.granularity || '1d',
+            benchmark: input.benchmark,
+          }
         }
 
         // Group transactions by day and calculate portfolio value
