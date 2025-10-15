@@ -16,10 +16,12 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Wallet, Loader2 } from 'lucide-react'
+import { Plus, Wallet, Loader2, Upload, Download } from 'lucide-react'
 import { PortfolioCardUnified } from '@/components/portfolio/portfolio-card-unified'
 import { PortfolioSummaryBar } from '@/components/portfolio/portfolio-summary-bar'
 import { PortfolioFilters } from '@/components/portfolio/portfolio-filters'
+import { ImportTransactions } from '@/components/transactions/import-transactions'
+import { ExportTransactions } from '@/components/transactions/export-transactions'
 
 export default function PortfoliosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -148,13 +150,16 @@ export default function PortfoliosPage() {
           <p className="text-muted-foreground mt-2">Manage your crypto portfolios</p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              New Portfolio
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <ImportTransactions />
+          <ExportTransactions />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                New Portfolio
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleCreate}>
               <DialogHeader>
@@ -233,7 +238,8 @@ export default function PortfoliosPage() {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       {/* Summary Bar */}
