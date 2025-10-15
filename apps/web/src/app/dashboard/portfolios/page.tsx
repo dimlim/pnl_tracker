@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -17,7 +17,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Wallet, Loader2 } from 'lucide-react'
-import { PortfolioCardEnhanced } from '@/components/portfolio/portfolio-card-enhanced'
+import { PortfolioCardUnified } from '@/components/portfolio/portfolio-card-unified'
+import { PortfolioSummaryBar } from '@/components/portfolio/portfolio-summary-bar'
+import { PortfolioFilters } from '@/components/portfolio/portfolio-filters'
 
 export default function PortfoliosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -25,6 +27,11 @@ export default function PortfoliosPage() {
   const [baseCurrency, setBaseCurrency] = useState('USD')
   const [pnlMethod, setPnlMethod] = useState<'fifo' | 'lifo' | 'avg'>('fifo')
   const [includeFees, setIncludeFees] = useState(true)
+  
+  // Filters and sorting
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'value' | 'roi' | 'name' | 'updated'>('value')
+  const [currencyFilter, setCurrencyFilter] = useState('all')
 
   const utils = trpc.useUtils()
   const { data: portfolios, isLoading } = trpc.portfolios.listWithStats.useQuery()
@@ -49,6 +56,77 @@ export default function PortfoliosPage() {
       include_fees: includeFees,
     })
   }
+
+  // Calculate summary stats
+  const summaryStats = useMemo(() => {
+    if (!portfolios || portfolios.length === 0) {
+      return {
+        totalValue: 0,
+        totalPnL: 0,
+        pnlPercent: 0,
+        portfolioCount: 0,
+        dayChange: 0,
+        dayChangePercent: 0,
+      }
+    }
+
+    const totalValue = portfolios.reduce((sum: number, p: any) => sum + (p.stats?.totalValue || 0), 0)
+    const totalPnL = portfolios.reduce((sum: number, p: any) => sum + (p.stats?.totalPnL || 0), 0)
+    const totalInvested = totalValue - totalPnL
+    const pnlPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0
+    const dayChange = portfolios.reduce((sum: number, p: any) => sum + (p.stats?.dayChange || 0), 0)
+    const dayChangePercent = totalValue > 0 ? (dayChange / (totalValue - dayChange)) * 100 : 0
+
+    return {
+      totalValue,
+      totalPnL,
+      pnlPercent,
+      portfolioCount: portfolios.length,
+      dayChange,
+      dayChangePercent,
+    }
+  }, [portfolios])
+
+  // Get unique currencies
+  const currencies = useMemo(() => {
+    if (!portfolios) return []
+    return Array.from(new Set(portfolios.map((p: any) => p.base_currency)))
+  }, [portfolios])
+
+  // Filter and sort portfolios
+  const filteredPortfolios = useMemo(() => {
+    if (!portfolios) return []
+
+    let filtered = portfolios.filter((p: any) => {
+      // Search filter
+      if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+      // Currency filter
+      if (currencyFilter !== 'all' && p.base_currency !== currencyFilter) {
+        return false
+      }
+      return true
+    })
+
+    // Sort
+    filtered.sort((a: any, b: any) => {
+      switch (sortBy) {
+        case 'value':
+          return (b.stats?.totalValue || 0) - (a.stats?.totalValue || 0)
+        case 'roi':
+          return (b.stats?.pnlPercent || 0) - (a.stats?.pnlPercent || 0)
+        case 'name':
+          return a.name.localeCompare(b.name)
+        case 'updated':
+          return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [portfolios, searchQuery, currencyFilter, sortBy])
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -147,6 +225,24 @@ export default function PortfoliosPage() {
         </Dialog>
       </div>
 
+      {/* Summary Bar */}
+      {!isLoading && portfolios && portfolios.length > 0 && (
+        <PortfolioSummaryBar {...summaryStats} />
+      )}
+
+      {/* Filters */}
+      {!isLoading && portfolios && portfolios.length > 0 && (
+        <PortfolioFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          currencyFilter={currencyFilter}
+          onCurrencyFilterChange={setCurrencyFilter}
+          currencies={currencies}
+        />
+      )}
+
       {/* Portfolios Grid */}
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -154,10 +250,10 @@ export default function PortfoliosPage() {
             <div key={i} className="h-48 glass rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : portfolios && portfolios.length > 0 ? (
+      ) : filteredPortfolios && filteredPortfolios.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {portfolios.map((portfolio: any, index) => (
-            <PortfolioCardEnhanced 
+          {filteredPortfolios.map((portfolio: any, index) => (
+            <PortfolioCardUnified 
               key={portfolio.id} 
               portfolio={portfolio}
               stats={portfolio.stats || {
@@ -169,6 +265,10 @@ export default function PortfoliosPage() {
               index={index}
             />
           ))}
+        </div>
+      ) : portfolios && portfolios.length > 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No portfolios match your filters</p>
         </div>
       ) : (
         <Card className="glass-strong border-white/10">
