@@ -157,6 +157,19 @@ export default function DashboardPage() {
                   topAssets={portfolio.topAssets}
                   sparklineData={[100, 105, 103, 108, 112, 110, 115]} // Mock data for now
                   index={index}
+                  onEdit={() => window.location.href = `/dashboard/portfolios/${portfolio.id}/edit`}
+                  onDelete={() => {
+                    if (confirm(`Delete portfolio "${portfolio.name}"?`)) {
+                      // TODO: Implement delete
+                      alert('Delete functionality coming soon!')
+                    }
+                  }}
+                  onDuplicate={() => {
+                    alert('Duplicate functionality coming soon!')
+                  }}
+                  onExport={() => {
+                    alert('Export functionality coming soon!')
+                  }}
                 />
               ))}
             </div>
@@ -223,8 +236,8 @@ export default function DashboardPage() {
         storageKey="crypto-pnl-dashboard-config"
       />
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Main Content Grid - Hidden for now */}
+      <div className="hidden grid gap-6 lg:grid-cols-2">
         {/* Recent Activity */}
         <Card className="glass-strong border-white/10">
           <CardHeader>
