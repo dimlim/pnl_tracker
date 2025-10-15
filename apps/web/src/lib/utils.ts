@@ -24,3 +24,7 @@ export function formatNumber(value: number, decimals: number = 2): string {
 export function formatPercentage(value: number, decimals: number = 2): string {
   return `${value >= 0 ? '+' : ''}${value.toFixed(decimals)}%`
 }
+
+export function getPnLColor(value: number): string {
+  return value >= 0 ? 'text-profit' : 'text-loss'
+}
