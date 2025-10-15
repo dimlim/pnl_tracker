@@ -311,10 +311,9 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Top Performers */}
-      <Card className="glass-strong border-white/10">
+      {/* Top Performers - Hidden */}
+      <Card className="hidden glass-strong border-white/10">
         <CardHeader>
           <CardTitle>Top Performers</CardTitle>
         </CardHeader>
@@ -381,6 +380,7 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
 
       {/* Add Transaction Dialog */}
       <AddTransactionDialog 

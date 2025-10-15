@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
@@ -10,15 +11,18 @@ interface CryptoIconProps {
 }
 
 export function CryptoIcon({ symbol, size = 24, className }: CryptoIconProps) {
+  const [error, setError] = useState(false)
   const symbolLower = symbol.toLowerCase()
-  
-  // Fallback to text if image fails
-  const handleError = (e: any) => {
-    e.target.style.display = 'none'
-    const parent = e.target.parentElement
-    if (parent) {
-      parent.innerHTML = `<div class="flex items-center justify-center w-full h-full bg-white/10 rounded-full text-xs font-semibold">${symbol.slice(0, 2)}</div>`
-    }
+
+  if (error) {
+    return (
+      <div 
+        className={cn("relative flex-shrink-0 flex items-center justify-center bg-white/10 rounded-full text-xs font-semibold", className)}
+        style={{ width: size, height: size }}
+      >
+        {symbol.slice(0, 2)}
+      </div>
+    )
   }
 
   return (
@@ -32,7 +36,7 @@ export function CryptoIcon({ symbol, size = 24, className }: CryptoIconProps) {
         width={size}
         height={size}
         className="rounded-full"
-        onError={handleError}
+        onError={() => setError(true)}
         unoptimized
       />
     </div>
