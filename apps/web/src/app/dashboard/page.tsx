@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Number } from '@/components/ui/number'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
-import { PnLChart } from '@/components/charts/pnl-chart'
+import { PnLChartPro } from '@/components/charts/pnl-chart-pro'
 import { trpc } from '@/lib/trpc/client'
 import { 
   TrendingUp, 
@@ -22,15 +22,20 @@ import Link from 'next/link'
 import { formatCurrency, formatPercentage, formatNumber, getPnLColor, cn } from '@/lib/utils'
 
 type Timeframe = '1D' | '1W' | '1M' | '3M' | '1Y' | 'ALL'
+type Benchmark = 'BTC' | 'ETH' | 'NONE'
 
 export default function DashboardPage() {
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('1M')
+  const [selectedBenchmark, setSelectedBenchmark] = useState<Benchmark>('NONE')
   
   const { data: portfolios, isLoading } = trpc.portfolios.list.useQuery()
   const { data: dashboardStats, isLoading: statsLoading, error: statsError } = trpc.dashboard.getStats.useQuery()
   const { data: portfolioHistory, isLoading: historyLoading } = trpc.dashboard.getPortfolioHistory.useQuery(
-    { timeframe: selectedTimeframe },
+    { 
+      timeframe: selectedTimeframe,
+      benchmark: selectedBenchmark,
+    },
     { refetchOnWindowFocus: false }
   )
 
@@ -120,12 +125,18 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* PnL Chart */}
-      <PnLChart 
-        data={portfolioHistory || []}
+      {/* PnL Chart Pro */}
+      <PnLChartPro 
+        data={(portfolioHistory && 'data' in portfolioHistory) ? portfolioHistory.data : []}
         isLoading={historyLoading}
         onTimeframeChange={setSelectedTimeframe}
-        height={350}
+        onBenchmarkChange={setSelectedBenchmark}
+        height={400}
+        transactions={dashboardStats?.recentTransactions?.map((tx: any) => ({
+          timestamp: tx.timestamp,
+          type: tx.type,
+          value: tx.price * tx.quantity,
+        })) || []}
       />
 
       {/* Main Content Grid */}

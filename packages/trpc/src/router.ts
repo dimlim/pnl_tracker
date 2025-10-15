@@ -662,6 +662,8 @@ export const appRouter = t.router({
       .input(
         z.object({
           timeframe: z.enum(['1D', '1W', '1M', '3M', '1Y', 'ALL']).default('1M'),
+          granularity: z.enum(['1h', '1d', '1w']).optional(),
+          benchmark: z.enum(['BTC', 'ETH', 'NONE']).default('NONE'),
         })
       )
       .query(async ({ ctx, input }) => {
@@ -800,12 +802,28 @@ export const appRouter = t.router({
           historyArray.push({ date: todayKey, value: totalValue, cost: totalCost })
         }
 
-        return historyArray.map(item => ({
-          date: item.date,
-          value: item.value,
-          pnl: item.value - item.cost,
-          pnlPercent: item.cost > 0 ? ((item.value - item.cost) / item.cost) * 100 : 0,
-        }))
+        // Calculate realized/unrealized PnL for each point
+        const enrichedHistory = historyArray.map(item => {
+          const unrealizedPnL = item.value - item.cost
+          const realizedPnL = 0 // TODO: track from sell transactions
+          
+          return {
+            t: new Date(item.date).getTime(),
+            date: item.date,
+            value: item.value,
+            invested: item.cost,
+            pnl: unrealizedPnL + realizedPnL,
+            realized: realizedPnL,
+            unrealized: unrealizedPnL,
+            pnlPercent: item.cost > 0 ? ((unrealizedPnL + realizedPnL) / item.cost) * 100 : 0,
+          }
+        })
+
+        return {
+          data: enrichedHistory,
+          granularity: input.granularity || (input.timeframe === '1D' ? '1h' : '1d'),
+          benchmark: input.benchmark,
+        }
       }),
 
     getStats: protectedProcedure.query(async ({ ctx }) => {
