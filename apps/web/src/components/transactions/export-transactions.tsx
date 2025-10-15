@@ -19,7 +19,10 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
   const [isExporting, setIsExporting] = useState(false)
 
   const { data: transactions } = trpc.transactions.list.useQuery(
-    portfolioId ? { portfolio_id: portfolioId } : undefined as any
+    portfolioId ? { portfolio_id: portfolioId } : {} as any,
+    {
+      enabled: true, // Always fetch
+    }
   )
 
   const exportToCSV = () => {
