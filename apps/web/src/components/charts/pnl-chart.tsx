@@ -59,13 +59,47 @@ export function PnLChart({
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return []
     
-    return data.map((point) => ({
+    const transformed = data.map((point) => ({
       date: format(parseISO(point.date), 'MMM dd'),
       fullDate: point.date,
+      timestamp: parseISO(point.date).getTime(),
       value: point.value,
       pnl: point.pnl,
       pnlPercent: point.pnlPercent,
     }))
+
+    // If we have very few data points, add interpolated points for smoother chart
+    if (transformed.length < 5 && transformed.length >= 2) {
+      const interpolated = []
+      for (let i = 0; i < transformed.length - 1; i++) {
+        const current = transformed[i]
+        const next = transformed[i + 1]
+        interpolated.push(current)
+        
+        // Add 3 interpolated points between each pair
+        const timeDiff = next.timestamp - current.timestamp
+        const valueDiff = next.value - current.value
+        const pnlDiff = next.pnl - current.pnl
+        
+        for (let j = 1; j <= 3; j++) {
+          const ratio = j / 4
+          const interpTime = current.timestamp + (timeDiff * ratio)
+          interpolated.push({
+            date: format(new Date(interpTime), 'MMM dd'),
+            fullDate: format(new Date(interpTime), 'yyyy-MM-dd'),
+            timestamp: interpTime,
+            value: current.value + (valueDiff * ratio),
+            pnl: current.pnl + (pnlDiff * ratio),
+            pnlPercent: current.value > 0 ? ((current.pnl + (pnlDiff * ratio)) / current.value) * 100 : 0,
+            isInterpolated: true,
+          })
+        }
+      }
+      interpolated.push(transformed[transformed.length - 1])
+      return interpolated
+    }
+    
+    return transformed
   }, [data])
 
   // Calculate stats
@@ -96,16 +130,34 @@ export function PnLChart({
     }
   }, [chartData])
 
+  // Data range info
+  const dataRange = useMemo(() => {
+    if (!data || data.length === 0) return null
+    const firstDate = parseISO(data[0].date)
+    const lastDate = parseISO(data[data.length - 1].date)
+    const daysDiff = Math.ceil((lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
+    return {
+      start: format(firstDate, 'MMM dd, yyyy'),
+      end: format(lastDate, 'MMM dd, yyyy'),
+      days: daysDiff,
+      dataPoints: data.length,
+    }
+  }, [data])
+
   // Custom tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null
 
     const data = payload[0].payload
     const isProfit = data.pnl >= 0
+    const isInterpolated = data.isInterpolated
 
     return (
       <div className="glass-strong border border-white/10 rounded-lg p-4 shadow-xl">
-        <p className="text-sm text-muted-foreground mb-2">{data.fullDate}</p>
+        <p className="text-sm text-muted-foreground mb-2">
+          {data.fullDate}
+          {isInterpolated && <span className="text-xs ml-2 opacity-60">(estimated)</span>}
+        </p>
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-4">
             <span className="text-xs text-muted-foreground">Value:</span>
@@ -219,6 +271,19 @@ export function PnLChart({
       </CardHeader>
       
       <CardContent>
+        {dataRange && (
+          <div className="mb-4 flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Data range:</span>
+              <span>{dataRange.start} → {dataRange.end}</span>
+              <span className="opacity-60">({dataRange.days} {dataRange.days === 1 ? 'day' : 'days'})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span>{dataRange.dataPoints} data {dataRange.dataPoints === 1 ? 'point' : 'points'}</span>
+            </div>
+          </div>
+        )}
+        
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart
             data={chartData}
