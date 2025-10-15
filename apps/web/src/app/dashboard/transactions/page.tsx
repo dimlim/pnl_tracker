@@ -421,7 +421,7 @@ export default function TransactionsPage() {
                         variant="ghost"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setDeletingTransactionId(tx.id)
+                          if (tx.id) setDeletingTransactionId(tx.id)
                         }}
                         disabled={deleteTransaction.isPending}
                         title="Delete transaction"
