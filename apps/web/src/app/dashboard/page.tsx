@@ -130,19 +130,11 @@ export default function DashboardPage() {
       defaultEnabled: true,
       component: (
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">Your Portfolios</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Manage and track your crypto investments
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/dashboard/portfolios/new">
-                <Plus className="w-4 h-4 mr-2" />
-                New Portfolio
-              </Link>
-            </Button>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold">Your Portfolios</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage and track your crypto investments
+            </p>
           </div>
           {isLoading ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
