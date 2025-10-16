@@ -298,7 +298,23 @@ export default function MarketsPage() {
                           href={`/dashboard/assets/${coin.id}`}
                           className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
                         >
-                          <CryptoIcon symbol={coin.symbol} size={32} />
+                          {/* Real icon from API with fallback */}
+                          {coin.iconUrl ? (
+                            <img 
+                              src={coin.iconUrl} 
+                              alt={coin.symbol}
+                              className="w-8 h-8 rounded-full"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none'
+                                const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                                if (fallback) fallback.style.display = 'block'
+                              }}
+                            />
+                          ) : null}
+                          <div style={{ display: coin.iconUrl ? 'none' : 'block' }}>
+                            <CryptoIcon symbol={coin.symbol} size={32} />
+                          </div>
+                          
                           <div>
                             <div className="font-semibold flex items-center gap-2">
                               {coin.name}

@@ -88,12 +88,28 @@ export function TopGainersWidget() {
 
                     {/* Icon + Name */}
                     <div className="flex items-center gap-2">
-                      <CryptoIcon symbol={coin.symbol} size={32} />
-                      <div>
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">
+                      {/* Real icon from API with fallback */}
+                      {coin.iconUrl ? (
+                        <img 
+                          src={coin.iconUrl} 
+                          alt={coin.symbol}
+                          className="w-8 h-8 rounded-full flex-shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                            if (fallback) fallback.style.display = 'block'
+                          }}
+                        />
+                      ) : null}
+                      <div style={{ display: coin.iconUrl ? 'none' : 'block' }} className="flex-shrink-0">
+                        <CryptoIcon symbol={coin.symbol} size={32} />
+                      </div>
+                      
+                      <div className="min-w-0">
+                        <div className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {coin.symbol}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                           {coin.name}
                         </div>
                       </div>
