@@ -5,15 +5,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Search, Star, Plus } from 'lucide-react'
+import { Search, Star, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import Link from 'next/link'
 import { trpc } from '@/lib/trpc'
 import { TopGainersWidget } from '@/components/markets/top-gainers-widget'
@@ -59,13 +52,44 @@ function MarketsTableSkeleton() {
   )
 }
 
+type SortField = 'rank' | 'name' | 'price' | 'change_1h' | 'change_24h' | 'change_7d' | 'market_cap' | 'volume'
+type SortDirection = 'asc' | 'desc'
+
 export default function MarketsPage() {
   const [filter, setFilter] = useState<'all' | 'watchlist' | 'holdings'>('all')
-  const [sortBy, setSortBy] = useState('market_cap_desc')
+  const [sortField, setSortField] = useState<SortField>('market_cap')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [searchQuery, setSearchQuery] = useState('')
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   const utils = trpc.useUtils()
+
+  // Construct sortBy string for API
+  const sortBy = `${sortField}_${sortDirection}`
+
+  // Handle column header click
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Set new field with default direction
+      setSortField(field)
+      setSortDirection(field === 'name' ? 'asc' : 'desc')
+    }
+  }
+
+  // Render sort icon
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 opacity-40" />
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-4 h-4" />
+    ) : (
+      <ArrowDown className="w-4 h-4" />
+    )
+  }
 
   const { data: marketsData, isLoading } = trpc.markets.getAll.useQuery(
     {
@@ -148,21 +172,10 @@ export default function MarketsPage() {
               </TabsList>
             </Tabs>
 
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Sort by..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="market_cap_desc">Market Cap ↓</SelectItem>
-                <SelectItem value="market_cap_asc">Market Cap ↑</SelectItem>
-                <SelectItem value="price_desc">Price ↓</SelectItem>
-                <SelectItem value="price_asc">Price ↑</SelectItem>
-                <SelectItem value="change_24h_desc">24h Change ↓</SelectItem>
-                <SelectItem value="change_24h_asc">24h Change ↑</SelectItem>
-                <SelectItem value="volume_desc">Volume ↓</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Sort Info */}
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Click column headers to sort
+            </div>
           </div>
         </CardHeader>
 
@@ -178,14 +191,78 @@ export default function MarketsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-left text-sm text-gray-600 dark:text-gray-400">
-                    <th className="pb-3 font-medium">#</th>
-                    <th className="pb-3 font-medium">Name</th>
-                    <th className="pb-3 font-medium text-right">Price</th>
-                    <th className="pb-3 font-medium text-right">1h %</th>
-                    <th className="pb-3 font-medium text-right">24h %</th>
-                    <th className="pb-3 font-medium text-right">7d %</th>
-                    <th className="pb-3 font-medium text-right">Market Cap</th>
-                    <th className="pb-3 font-medium text-right">Volume (24h)</th>
+                    <th className="pb-3 font-medium">
+                      <button
+                        onClick={() => handleSort('rank')}
+                        className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        #
+                        <SortIcon field="rank" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium">
+                      <button
+                        onClick={() => handleSort('name')}
+                        className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        Name
+                        <SortIcon field="name" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium text-right">
+                      <button
+                        onClick={() => handleSort('price')}
+                        className="flex items-center gap-1 ml-auto hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        Price
+                        <SortIcon field="price" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium text-right">
+                      <button
+                        onClick={() => handleSort('change_1h')}
+                        className="flex items-center gap-1 ml-auto hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        1h %
+                        <SortIcon field="change_1h" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium text-right">
+                      <button
+                        onClick={() => handleSort('change_24h')}
+                        className="flex items-center gap-1 ml-auto hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        24h %
+                        <SortIcon field="change_24h" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium text-right">
+                      <button
+                        onClick={() => handleSort('change_7d')}
+                        className="flex items-center gap-1 ml-auto hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        7d %
+                        <SortIcon field="change_7d" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium text-right">
+                      <button
+                        onClick={() => handleSort('market_cap')}
+                        className="flex items-center gap-1 ml-auto hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        Market Cap
+                        <SortIcon field="market_cap" />
+                      </button>
+                    </th>
+                    <th className="pb-3 font-medium text-right">
+                      <button
+                        onClick={() => handleSort('volume')}
+                        className="flex items-center gap-1 ml-auto hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                      >
+                        Volume (24h)
+                        <SortIcon field="volume" />
+                      </button>
+                    </th>
                     <th className="pb-3 font-medium text-center">Last 7 Days</th>
                     <th className="pb-3 font-medium"></th>
                   </tr>
