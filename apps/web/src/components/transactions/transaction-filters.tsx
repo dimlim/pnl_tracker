@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Filter, X, Download } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Filter, X, Download, Search, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
+import { DateRange } from 'react-day-picker'
 
 interface TransactionFiltersProps {
   onFilterChange: (filters: FilterState) => void
@@ -18,6 +21,8 @@ export interface FilterState {
   dateTo?: Date
   minAmount?: number
   maxAmount?: number
+  pnlFilter?: 'all' | 'profit' | 'loss' | 'breakeven'
+  search?: string
 }
 
 const TRANSACTION_TYPES = [
@@ -38,6 +43,7 @@ export function TransactionFilters({
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<FilterState>({
     type: [],
+    pnlFilter: 'all',
   })
 
   const handleTypeToggle = (type: string) => {
@@ -69,7 +75,29 @@ export function TransactionFilters({
   }
 
   const clearFilters = () => {
-    const newFilters: FilterState = { type: [] }
+    const newFilters: FilterState = { type: [], pnlFilter: 'all' }
+    setFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    const newFilters = {
+      ...filters,
+      dateFrom: range?.from,
+      dateTo: range?.to,
+    }
+    setFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
+  const handlePnLFilterChange = (value: 'all' | 'profit' | 'loss' | 'breakeven') => {
+    const newFilters = { ...filters, pnlFilter: value }
+    setFilters(newFilters)
+    onFilterChange(newFilters)
+  }
+
+  const handleSearchChange = (value: string) => {
+    const newFilters = { ...filters, search: value }
     setFilters(newFilters)
     onFilterChange(newFilters)
   }
@@ -79,10 +107,24 @@ export function TransactionFilters({
     filters.dateFrom || 
     filters.dateTo || 
     filters.minAmount !== undefined || 
-    filters.maxAmount !== undefined
+    filters.maxAmount !== undefined ||
+    (filters.pnlFilter && filters.pnlFilter !== 'all') ||
+    (filters.search && filters.search.length > 0)
 
   return (
     <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search by asset name or symbol..."
+          value={filters.search || ''}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
       <div className="flex items-center justify-between">
         <Button
           variant="outline"
@@ -154,24 +196,65 @@ export function TransactionFilters({
             </div>
 
             {/* Date Range */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">From Date</label>
-                <input
-                  type="date"
-                  value={filters.dateFrom ? format(filters.dateFrom, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => handleDateChange('dateFrom', e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">To Date</label>
-                <input
-                  type="date"
-                  value={filters.dateTo ? format(filters.dateTo, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => handleDateChange('dateTo', e.target.value)}
-                  className="w-full px-3 py-2 rounded-md bg-white/5 border border-white/10 text-sm"
-                />
+            <div>
+              <label className="text-sm font-medium mb-2 block">Date Range</label>
+              <DateRangePicker
+                value={{ from: filters.dateFrom, to: filters.dateTo }}
+                onChange={handleDateRangeChange}
+              />
+            </div>
+
+            {/* P&L Filter */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Profit/Loss</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePnLFilterChange('all')}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2',
+                    filters.pnlFilter === 'all'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-white/5 hover:bg-white/10 text-muted-foreground'
+                  )}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => handlePnLFilterChange('profit')}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2',
+                    filters.pnlFilter === 'profit'
+                      ? 'bg-profit text-white'
+                      : 'bg-white/5 hover:bg-white/10 text-muted-foreground'
+                  )}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  Profit
+                </button>
+                <button
+                  onClick={() => handlePnLFilterChange('loss')}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2',
+                    filters.pnlFilter === 'loss'
+                      ? 'bg-loss text-white'
+                      : 'bg-white/5 hover:bg-white/10 text-muted-foreground'
+                  )}
+                >
+                  <TrendingDown className="w-4 h-4" />
+                  Loss
+                </button>
+                <button
+                  onClick={() => handlePnLFilterChange('breakeven')}
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2',
+                    filters.pnlFilter === 'breakeven'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-white/5 hover:bg-white/10 text-muted-foreground'
+                  )}
+                >
+                  <Minus className="w-4 h-4" />
+                  Break-even
+                </button>
               </div>
             </div>
 
