@@ -297,7 +297,6 @@ export default function PortfoliosPage() {
                 assetCount: 0,
               }}
               topAssets={portfolio.topAssets}
-              sparklineData={[100, 105, 103, 108, 112, 110, 115]} // Mock data
               index={index}
               onEdit={() => window.location.href = `/dashboard/portfolios/${portfolio.id}`}
               onDelete={async () => {

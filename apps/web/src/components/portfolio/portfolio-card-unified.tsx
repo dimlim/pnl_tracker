@@ -19,6 +19,7 @@ import { formatCurrency, formatPercentage, cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
 import { Sparkline } from '@/components/charts/sparkline'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
+import { trpc } from '@/lib/trpc/client'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,13 +77,31 @@ export function PortfolioCardUnified({
   portfolio, 
   stats, 
   topAssets,
-  sparklineData,
+  sparklineData: providedSparklineData,
   index,
   onEdit,
   onDelete,
   onDuplicate,
   onExport,
 }: PortfolioCardUnifiedProps) {
+  // Fetch real 7-day history
+  const { data: historyData, isLoading: historyLoading } = trpc.portfolios.getHistory.useQuery(
+    {
+      portfolioId: portfolio.id,
+      days: 7,
+      interval: 'daily',
+    },
+    {
+      // Only fetch if we don't have provided data
+      enabled: !providedSparklineData,
+      // Cache for 15 minutes
+      staleTime: 15 * 60 * 1000,
+    }
+  )
+
+  // Use provided data or convert history to sparkline data
+  const sparklineData = providedSparklineData || 
+    (historyData?.map(point => point.totalValue) ?? [])
   const gradientClass = GRADIENT_COLORS[index % GRADIENT_COLORS.length]
   const iconColor = ICON_COLORS[index % ICON_COLORS.length]
   const isProfit = stats.totalPnL >= 0
@@ -267,14 +286,20 @@ export function PortfolioCardUnified({
           </div>
 
           {/* Sparkline */}
-          {sparklineData && sparklineData.length > 0 && (
-            <div className="pt-3 border-t border-white/5">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-muted-foreground">7-day trend</span>
-              </div>
-              <Sparkline data={sparklineData} />
+          <div className="pt-3 border-t border-white/5">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">7-day trend</span>
             </div>
-          )}
+            {historyLoading ? (
+              <div className="h-12 bg-white/5 rounded animate-pulse" />
+            ) : sparklineData && sparklineData.length > 0 ? (
+              <Sparkline data={sparklineData} />
+            ) : (
+              <div className="h-12 flex items-center justify-center text-xs text-muted-foreground">
+                No data yet
+              </div>
+            )}
+          </div>
 
           {/* Last Updated */}
           {portfolio.updated_at && (
