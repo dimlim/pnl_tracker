@@ -163,11 +163,14 @@ export const marketsRouter = router({
     )
     .query(async ({ input, ctx }) => {
       try {
+        console.log('🔍 Fetching markets from CoinGecko API...')
         // Fetch real data from CoinGecko
         let markets = await fetchCoinGeckoMarkets({
           perPage: input.perPage,
           page: input.page,
         })
+        console.log('✅ CoinGecko API returned', markets.length, 'markets')
+        console.log('📊 First market:', markets[0])
 
         // Filter by search
         if (input.search) {
@@ -229,7 +232,8 @@ export const marketsRouter = router({
           perPage: input.perPage,
         }
       } catch (error) {
-        console.error('Failed to fetch markets:', error)
+        console.error('❌ Failed to fetch markets from CoinGecko:', error)
+        console.error('⚠️ Falling back to MOCK DATA')
         // Fallback to mock data on error
         let markets = [...MOCK_MARKET_DATA]
         

@@ -73,18 +73,25 @@ export async function fetchCoinGeckoMarkets(params: {
     url.searchParams.set('sparkline', 'true')
     url.searchParams.set('price_change_percentage', '1h,24h,7d')
 
+    console.log('🌐 Calling CoinGecko API:', url.toString())
+
     const response = await fetch(url.toString(), {
       headers: {
         'Accept': 'application/json',
       },
     })
 
+    console.log('📡 CoinGecko API response status:', response.status)
+
     if (!response.ok) {
-      console.error('CoinGecko API error:', response.status, response.statusText)
-      throw new Error(`CoinGecko API error: ${response.status}`)
+      const errorText = await response.text()
+      console.error('❌ CoinGecko API error:', response.status, response.statusText)
+      console.error('❌ Error body:', errorText)
+      throw new Error(`CoinGecko API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json() as CoinGeckoMarket[]
+    console.log('✅ CoinGecko returned', data.length, 'coins')
 
     return data.map((coin) => ({
       id: coin.id,
