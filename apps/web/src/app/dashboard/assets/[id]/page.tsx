@@ -26,6 +26,7 @@ import { format } from 'date-fns'
 import { PriceChart } from '@/components/charts/price-chart'
 import { SeedPricesButton } from '@/components/admin/seed-prices-button'
 import { TransactionFilters as TransactionFiltersNew, type FilterState, type SortState } from '@/components/transactions/transaction-filters-new'
+import { TransactionList } from '@/components/transactions/transaction-list'
 import { exportTransactionsToExcel } from '@/lib/export'
 import { AddAssetTransactionDialog } from '@/components/transactions/add-asset-transaction-dialog'
 import { EditTransactionDialog } from '@/components/transactions/edit-transaction-dialog'
@@ -490,7 +491,22 @@ export default function AssetDetailsPage({ params }: { params: Promise<{ id: str
             }}
           />
           
-          <Card className="glass-strong border-white/10">
+          <TransactionList
+            transactions={sortedTransactions || []}
+            title="Your Transaction History"
+            currentPrice={currentPrice}
+            isLoading={txLoading}
+            showAsset={false}
+            showPortfolio={false}
+            showROI={true}
+            onBulkDelete={(ids) => {
+              bulkDeleteMutation.mutate({ ids })
+            }}
+            emptyMessage="No transactions yet. Add your first transaction to start tracking!"
+          />
+
+          {/* Old Card - keeping for reference */}
+          <Card className="hidden glass-strong border-white/10">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Your Transaction History</CardTitle>
               <div className="flex gap-2">

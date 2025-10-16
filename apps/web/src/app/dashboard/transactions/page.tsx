@@ -279,8 +279,22 @@ export default function TransactionsPage() {
         </CardContent>
       </Card>
 
-      {/* Transactions Table */}
-      <Card className="glass-strong border-white/10">
+      {/* Transactions List */}
+      <TransactionList
+        transactions={filteredTransactions}
+        title={selectedPortfolioId 
+          ? `${portfolios?.find(p => p.id === selectedPortfolioId)?.name} Transactions (${filteredTransactions.length})`
+          : `All Transactions (${filteredTransactions.length})`
+        }
+        isLoading={isLoading}
+        showAsset={true}
+        showPortfolio={true}
+        showROI={true}
+        emptyMessage="No transactions found. Try adjusting your filters."
+      />
+
+      {/* Old Card - keeping for reference, will remove after testing */}
+      <Card className="hidden glass-strong border-white/10">
         <CardHeader>
           <CardTitle>
             {selectedPortfolioId 
