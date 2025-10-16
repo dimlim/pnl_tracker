@@ -171,6 +171,9 @@ importers:
       '@crypto-pnl/types':
         specifier: workspace:*
         version: link:../types
+      date-fns:
+        specifier: ^3.6.0
+        version: 3.6.0
     devDependencies:
       vitest:
         specifier: ^2.0.5

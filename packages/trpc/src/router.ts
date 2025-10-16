@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import type { Context } from './context'
 import type { Portfolio, Transaction, Asset } from '@crypto-pnl/types'
 import { computePnL } from '@crypto-pnl/pnl-engine'
+import { calculatePortfolioHistory, fetchHistoricalPricesFromCoinGecko } from '@crypto-pnl/pnl-engine/src/history'
 import superjson from 'superjson'
 
 const t = initTRPC.context<Context>().create({
@@ -554,6 +555,76 @@ export const appRouter = t.router({
         }
 
         return newPortfolio as Portfolio
+      }),
+
+    getHistory: protectedProcedure
+      .input(z.object({
+        portfolioId: z.string().uuid(),
+        days: z.number().min(1).max(365).default(7),
+        interval: z.enum(['daily', 'hourly']).default('daily'),
+      }))
+      .query(async ({ ctx, input }) => {
+        // Get portfolio to verify ownership and get method
+        const { data: portfolio, error: portfolioError } = await ctx.supabase
+          .from('portfolios')
+          .select('*')
+          .eq('id', input.portfolioId)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (portfolioError || !portfolio) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Portfolio not found' })
+        }
+
+        // Get all transactions for this portfolio
+        const { data: transactions, error: txError } = await ctx.supabase
+          .from('transactions')
+          .select('*, assets(symbol, coingecko_id)')
+          .eq('portfolio_id', input.portfolioId)
+          .order('timestamp', { ascending: true })
+
+        if (txError) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: txError.message })
+        }
+
+        if (!transactions || transactions.length === 0) {
+          // Return empty history
+          return []
+        }
+
+        // Get unique assets
+        const { data: assets, error: assetsError } = await ctx.supabase
+          .from('assets')
+          .select('id, symbol, coingecko_id')
+          .in('id', Array.from(new Set(transactions.map((tx: any) => tx.asset_id))))
+
+        if (assetsError) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: assetsError.message })
+        }
+
+        // Create price fetcher function
+        const getHistoricalPrices = async (date: Date, assetIds: number[]) => {
+          const assetsToFetch = (assets || []).filter((a: any) => assetIds.includes(a.id))
+          return await fetchHistoricalPricesFromCoinGecko(date, assetsToFetch)
+        }
+
+        // Calculate history
+        const history = await calculatePortfolioHistory(
+          transactions.map((tx: any) => ({
+            id: tx.id,
+            asset_id: tx.asset_id,
+            type: tx.type,
+            quantity: tx.quantity,
+            price: tx.price,
+            fee: tx.fee || 0,
+            timestamp: new Date(tx.timestamp),
+          })),
+          input.days,
+          portfolio.pnl_method as 'fifo' | 'lifo' | 'avg',
+          getHistoricalPrices
+        )
+
+        return history
       }),
   }),
 

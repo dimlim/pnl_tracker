@@ -8,7 +8,8 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@crypto-pnl/types": "workspace:*"
+    "@crypto-pnl/types": "workspace:*",
+    "date-fns": "^3.6.0"
   },
   "devDependencies": {
     "vitest": "^2.0.5"
