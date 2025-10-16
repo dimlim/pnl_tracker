@@ -13,6 +13,7 @@ interface CryptoIconProps {
 
 export function CryptoIcon({ symbol, iconUrl, size = 24, className }: CryptoIconProps) {
   const [error, setError] = useState(false)
+  const [loading, setLoading] = useState(true)
   const symbolLower = symbol.toLowerCase()
 
   // If we have icon_url from database, use it
@@ -22,6 +23,9 @@ export function CryptoIcon({ symbol, iconUrl, size = 24, className }: CryptoIcon
         className={cn("relative flex-shrink-0", className)}
         style={{ width: size, height: size }}
       >
+        {loading && (
+          <div className="absolute inset-0 bg-white/10 rounded-full animate-pulse" />
+        )}
         <Image
           src={iconUrl}
           alt={symbol}
@@ -29,6 +33,8 @@ export function CryptoIcon({ symbol, iconUrl, size = 24, className }: CryptoIcon
           height={size}
           className="rounded-full"
           onError={() => setError(true)}
+          onLoad={() => setLoading(false)}
+          loading="lazy"
           unoptimized
         />
       </div>
@@ -42,6 +48,9 @@ export function CryptoIcon({ symbol, iconUrl, size = 24, className }: CryptoIcon
         className={cn("relative flex-shrink-0", className)}
         style={{ width: size, height: size }}
       >
+        {loading && (
+          <div className="absolute inset-0 bg-white/10 rounded-full animate-pulse" />
+        )}
         <Image
           src={`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/${symbolLower}.png`}
           alt={symbol}
@@ -49,6 +58,8 @@ export function CryptoIcon({ symbol, iconUrl, size = 24, className }: CryptoIcon
           height={size}
           className="rounded-full"
           onError={() => setError(true)}
+          onLoad={() => setLoading(false)}
+          loading="lazy"
           unoptimized
         />
       </div>

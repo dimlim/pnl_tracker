@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Filter, X, Download, Search, TrendingUp, TrendingDown, Minus } from 'lu
 import { cn } from '@/lib/utils'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { DateRange } from 'react-day-picker'
+import { useDebounce } from '@/hooks/use-debounce'
 
 interface TransactionFiltersProps {
   onFilterChange: (filters: FilterState) => void
@@ -41,10 +42,19 @@ export function TransactionFilters({
   showExport = true 
 }: TransactionFiltersProps) {
   const [showFilters, setShowFilters] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
+  const debouncedSearch = useDebounce(searchInput, 300)
   const [filters, setFilters] = useState<FilterState>({
     type: [],
     pnlFilter: 'all',
   })
+
+  // Update filters when debounced search changes
+  useEffect(() => {
+    const newFilters = { ...filters, search: debouncedSearch }
+    setFilters(newFilters)
+    onFilterChange(newFilters)
+  }, [debouncedSearch])
 
   const handleTypeToggle = (type: string) => {
     const newTypes = filters.type.includes(type)
@@ -119,8 +129,8 @@ export function TransactionFilters({
         <Input
           type="text"
           placeholder="Search by asset name or symbol..."
-          value={filters.search || ''}
-          onChange={(e) => handleSearchChange(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
           className="pl-10"
         />
       </div>

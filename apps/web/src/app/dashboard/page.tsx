@@ -9,6 +9,7 @@ import { AddTransactionDialog } from '@/components/transactions/add-transaction-
 import { PnLChart } from '@/components/charts/pnl-chart'
 import { PortfolioCardUnified } from '@/components/portfolio/portfolio-card-unified'
 import { ManagedDashboard } from '@/components/dashboard/managed-dashboard'
+import { SkeletonStats, SkeletonChart, SkeletonCard } from '@/components/ui/skeleton-card'
 import { trpc } from '@/lib/trpc/client'
 import { toast } from 'sonner'
 import { 
@@ -278,10 +279,26 @@ export default function DashboardPage() {
 
   if (isLoading || statsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-500 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
+      <div className="space-y-8 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-4xl font-bold font-heading text-gradient">Dashboard</h1>
+            <p className="text-muted-foreground mt-2">Track your crypto portfolio performance</p>
+          </div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <SkeletonStats />
+
+        {/* Chart Skeleton */}
+        <SkeletonChart />
+
+        {/* Portfolios Skeleton */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <SkeletonCard key={i} lines={4} />
+          ))}
         </div>
       </div>
     )
