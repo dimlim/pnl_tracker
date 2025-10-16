@@ -9,6 +9,7 @@ import { AddTransactionDialog } from '@/components/transactions/add-transaction-
 import { PnLChart } from '@/components/charts/pnl-chart'
 import { PortfolioCardUnified } from '@/components/portfolio/portfolio-card-unified'
 import { ManagedDashboard } from '@/components/dashboard/managed-dashboard'
+import { QuickInsights } from '@/components/dashboard/quick-insights'
 import { SkeletonStats, SkeletonChart, SkeletonCard } from '@/components/ui/skeleton-card'
 import { trpc } from '@/lib/trpc/client'
 import { toast } from 'sonner'
@@ -325,6 +326,13 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
+
+      {/* Quick Insights */}
+      <QuickInsights 
+        portfolios={portfolios}
+        transactions={allTransactions}
+        history={portfolioHistory && 'data' in portfolioHistory ? portfolioHistory.data : []}
+      />
 
       {/* Managed Dashboard Widgets */}
       <ManagedDashboard 
