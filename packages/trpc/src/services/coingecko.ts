@@ -194,14 +194,15 @@ export async function searchCoinGecko(query: string) {
     })
 
     if (!response.ok) {
-      throw new Error(`CoinGecko API error: ${response.status}`)
+      console.error('CoinGecko search API error:', response.status)
+      return []
     }
 
     const data = await response.json() as any
     return data.coins || []
   } catch (error) {
     console.error('Failed to search CoinGecko:', error)
-    throw error
+    return []
   }
 }
 

@@ -380,8 +380,32 @@ export const marketsRouter = router({
     )
     .query(async ({ input, ctx }) => {
       try {
+        console.log('Searching for:', input.query)
+        
         // Use CoinGecko search API to find all coins
-        const results = await searchCoinGecko(input.query)
+        let results = await searchCoinGecko(input.query)
+        console.log('CoinGecko search results:', results.length)
+
+        // Fallback: if no results, try searching in top markets
+        if (results.length === 0) {
+          console.log('No search results, trying fallback to markets')
+          const markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
+          const query = input.query.toLowerCase()
+          results = markets
+            .filter(m => 
+              m.name.toLowerCase().includes(query) || 
+              m.symbol.toLowerCase().includes(query)
+            )
+            .map(m => ({
+              id: m.id,
+              symbol: m.symbol,
+              name: m.name,
+              market_cap_rank: m.rank,
+              thumb: m.iconUrl,
+              large: m.iconUrl,
+            }))
+          console.log('Fallback results:', results.length)
+        }
 
         // Get user's watchlist if authenticated
         let watchlistIds: string[] = []
@@ -395,7 +419,7 @@ export const marketsRouter = router({
         }
 
         // Format results
-        return results.slice(0, 20).map((coin: any) => ({
+        const formatted = results.slice(0, 20).map((coin: any) => ({
           id: coin.id,
           symbol: coin.symbol?.toUpperCase() || '',
           name: coin.name,
@@ -403,6 +427,9 @@ export const marketsRouter = router({
           iconUrl: coin.thumb || coin.large || '',
           isWatchlisted: watchlistIds.includes(coin.id),
         }))
+        
+        console.log('Returning formatted results:', formatted.length)
+        return formatted
       } catch (error) {
         console.error('Failed to search coins:', error)
         return []
