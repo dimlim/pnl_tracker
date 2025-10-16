@@ -849,6 +849,52 @@ export const appRouter = t.router({
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
         return { success: true, count: count || 0 }
       }),
+
+    bulkMove: protectedProcedure
+      .input(z.object({ 
+        ids: z.array(z.number()),
+        targetPortfolioId: z.string().uuid()
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.ids.length === 0) {
+          return { success: true, count: 0 }
+        }
+
+        // Verify target portfolio belongs to user
+        const { data: targetPortfolio } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('id', input.targetPortfolioId)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (!targetPortfolio) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Target portfolio not found' })
+        }
+
+        // Verify all transactions belong to user
+        const { data: transactions } = await ctx.supabase
+          .from('transactions')
+          .select('id, portfolio_id, portfolios!inner(user_id)')
+          .in('id', input.ids)
+
+        const userTransactionIds = transactions
+          ?.filter((tx: any) => tx.portfolios.user_id === ctx.user.id)
+          .map((tx: any) => tx.id) || []
+
+        if (userTransactionIds.length === 0) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'No valid transactions to move' })
+        }
+
+        // Move transactions to target portfolio
+        const { error, count } = await ctx.supabase
+          .from('transactions')
+          .update({ portfolio_id: input.targetPortfolioId })
+          .in('id', userTransactionIds)
+
+        if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+        return { success: true, count: count || 0 }
+      }),
   }),
 
   // PnL calculations
