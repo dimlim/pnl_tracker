@@ -60,6 +60,16 @@ export default function PortfoliosPage() {
     },
   })
 
+  const duplicatePortfolio = trpc.portfolios.duplicate.useMutation({
+    onSuccess: () => {
+      utils.portfolios.listWithStats.invalidate()
+    },
+    onError: (error) => {
+      console.error('Failed to duplicate portfolio:', error)
+      alert(`Error: ${error.message}`)
+    },
+  })
+
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
     createPortfolio.mutate({
@@ -284,18 +294,30 @@ export default function PortfoliosPage() {
               index={index}
               onEdit={() => window.location.href = `/dashboard/portfolios/${portfolio.id}`}
               onDelete={() => {
-                if (confirm(`Delete portfolio "${portfolio.name}"? This action cannot be undone.`)) {
+                const confirmMessage = `Delete portfolio "${portfolio.name}"?\n\n` +
+                  `This will permanently delete:\n` +
+                  `- Portfolio settings\n` +
+                  `- ${portfolio.stats?.assetCount || 0} assets\n` +
+                  `- All transactions\n\n` +
+                  `This action cannot be undone!`
+                
+                if (confirm(confirmMessage)) {
                   deletePortfolio.mutate({ id: portfolio.id })
                 }
               }}
               onDuplicate={() => {
                 const newName = prompt('Enter name for duplicated portfolio:', `${portfolio.name} (Copy)`)
-                if (newName) {
-                  createPortfolio.mutate({
-                    name: newName,
-                    base_currency: portfolio.base_currency,
-                    pnl_method: portfolio.pnl_method,
-                    include_fees: portfolio.include_fees || true,
+                if (newName && newName.trim()) {
+                  const copyTransactions = confirm(
+                    `Copy all transactions from "${portfolio.name}"?\n\n` +
+                    `Yes - Full copy with all transactions\n` +
+                    `No - Empty portfolio with same settings`
+                  )
+                  
+                  duplicatePortfolio.mutate({
+                    id: portfolio.id,
+                    newName: newName.trim(),
+                    copyTransactions,
                   })
                 }
               }}

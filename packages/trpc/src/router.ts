@@ -491,6 +491,70 @@ export const appRouter = t.router({
         if (error) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
         return { success: true }
       }),
+
+    duplicate: protectedProcedure
+      .input(z.object({ 
+        id: z.string().uuid(),
+        newName: z.string(),
+        copyTransactions: z.boolean().default(true)
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Get original portfolio
+        const { data: original, error: fetchError } = await ctx.supabase
+          .from('portfolios')
+          .select('*')
+          .eq('id', input.id)
+          .eq('user_id', ctx.user.id)
+          .single()
+
+        if (fetchError || !original) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Portfolio not found' })
+        }
+
+        // Create new portfolio
+        const { data: newPortfolio, error: createError } = await ctx.supabase
+          .from('portfolios')
+          .insert({
+            user_id: ctx.user.id,
+            name: input.newName,
+            base_currency: original.base_currency,
+            pnl_method: original.pnl_method,
+            include_fees: original.include_fees,
+          })
+          .select()
+          .single()
+
+        if (createError || !newPortfolio) {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to create portfolio' })
+        }
+
+        // Copy transactions if requested
+        if (input.copyTransactions) {
+          const { data: transactions, error: txError } = await ctx.supabase
+            .from('transactions')
+            .select('*')
+            .eq('portfolio_id', input.id)
+
+          if (!txError && transactions && transactions.length > 0) {
+            const newTransactions = transactions.map(tx => ({
+              portfolio_id: newPortfolio.id,
+              asset_id: tx.asset_id,
+              type: tx.type,
+              quantity: tx.quantity,
+              price: tx.price,
+              fee: tx.fee,
+              timestamp: tx.timestamp,
+              note: tx.note,
+            }))
+
+            await ctx.supabase
+              .from('transactions')
+              .insert(newTransactions)
+          }
+        }
+
+        return newPortfolio as Portfolio
+      }),
   }),
 
   // Positions
