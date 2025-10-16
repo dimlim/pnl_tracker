@@ -2,7 +2,7 @@
 
 Professional cryptocurrency portfolio tracking with advanced PnL calculations, real-time updates, and beautiful analytics.
 
-## 🚀 Features
+## Features
 
 - **Advanced PnL Calculations**: FIFO, LIFO, and Average Cost methods
 - **Real-time Tracking**: Live price updates and portfolio monitoring
