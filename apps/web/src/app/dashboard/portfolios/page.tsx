@@ -24,6 +24,7 @@ import { ImportTransactions } from '@/components/transactions/import-transaction
 import { ExportTransactions } from '@/components/transactions/export-transactions'
 import { useConfirmDialog } from '@/components/ui/confirm-dialog'
 import { usePromptDialog } from '@/components/ui/prompt-dialog'
+import { toast } from 'sonner'
 
 export default function PortfoliosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -46,34 +47,47 @@ export default function PortfoliosPage() {
   const { data: portfolios, isLoading } = trpc.portfolios.listWithStats.useQuery()
   
   const createPortfolio = trpc.portfolios.create.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.portfolios.listWithStats.invalidate()
       setDialogOpen(false)
       setName('')
+      toast.success('Portfolio created successfully', {
+        description: `"${data.name}" is ready to track your investments`
+      })
     },
     onError: (error) => {
       console.error('Failed to create portfolio:', error)
-      alert(`Error: ${error.message}`)
+      toast.error('Failed to create portfolio', {
+        description: error.message
+      })
     },
   })
 
   const deletePortfolio = trpc.portfolios.delete.useMutation({
     onSuccess: () => {
       utils.portfolios.listWithStats.invalidate()
+      toast.success('Portfolio deleted successfully')
     },
     onError: (error) => {
       console.error('Failed to delete portfolio:', error)
-      alert(`Error: ${error.message}`)
+      toast.error('Failed to delete portfolio', {
+        description: error.message
+      })
     },
   })
 
   const duplicatePortfolio = trpc.portfolios.duplicate.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       utils.portfolios.listWithStats.invalidate()
+      toast.success('Portfolio duplicated successfully', {
+        description: `"${data.name}" created with all settings`
+      })
     },
     onError: (error) => {
       console.error('Failed to duplicate portfolio:', error)
-      alert(`Error: ${error.message}`)
+      toast.error('Failed to duplicate portfolio', {
+        description: error.message
+      })
     },
   })
 
@@ -342,7 +356,7 @@ export default function PortfoliosPage() {
                   const transactions = await utils.transactions.list.fetch({ portfolio_id: portfolio.id })
 
                   if (!transactions || transactions.length === 0) {
-                    alert('No transactions to export')
+                    toast.error('No transactions to export')
                     return
                   }
 
@@ -383,7 +397,7 @@ export default function PortfoliosPage() {
                   URL.revokeObjectURL(url)
                 } catch (error) {
                   console.error('Export failed:', error)
-                  alert('Failed to export portfolio')
+                  toast.error('Failed to export portfolio')
                 }
               }}
             />

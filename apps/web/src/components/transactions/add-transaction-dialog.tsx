@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { trpc } from '@/lib/trpc/client'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -111,7 +112,9 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
       
       if (!response.ok) {
         console.error('Server error:', response.status, data)
-        alert(`Failed to add asset: ${data.error || 'Server error'}`)
+        toast.error('Failed to add asset', {
+          description: data.error || 'Server error'
+        })
         return
       }
       
@@ -127,11 +130,11 @@ export function AddTransactionDialog({ portfolioId, trigger, open: externalOpen,
         console.log('Asset added successfully:', data.asset)
       } else {
         console.error('Failed to add asset:', data)
-        alert('Failed to add asset. Please try again.')
+        toast.error('Failed to add asset. Please try again.')
       }
     } catch (error) {
       console.error('Add asset error:', error)
-      alert('Network error. Please check your connection.')
+      toast.error('Network error. Please check your connection.')
     } finally {
       setIsAddingAsset(false)
     }

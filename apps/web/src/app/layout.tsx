@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter, Space_Grotesk, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { TRPCProvider } from '@/lib/trpc/client'
+import { Toaster } from 'sonner'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -38,6 +39,13 @@ export default function RootLayout({
           <div className="min-h-screen bg-background bg-grid-pattern">
             {children}
           </div>
+          <Toaster 
+            position="top-right"
+            expand={true}
+            richColors
+            closeButton
+            theme="dark"
+          />
         </TRPCProvider>
       </body>
     </html>

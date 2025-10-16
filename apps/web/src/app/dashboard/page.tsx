@@ -10,6 +10,7 @@ import { PnLChart } from '@/components/charts/pnl-chart'
 import { PortfolioCardUnified } from '@/components/portfolio/portfolio-card-unified'
 import { ManagedDashboard } from '@/components/dashboard/managed-dashboard'
 import { trpc } from '@/lib/trpc/client'
+import { toast } from 'sonner'
 import { 
   TrendingUp, 
   Wallet, 
@@ -209,7 +210,7 @@ export default function DashboardPage() {
                       const transactions = await utils.transactions.list.fetch({ portfolio_id: portfolio.id })
 
                       if (!transactions || transactions.length === 0) {
-                        alert('No transactions to export')
+                        toast.error('No transactions to export')
                         return
                       }
 
@@ -245,7 +246,7 @@ export default function DashboardPage() {
                       URL.revokeObjectURL(url)
                     } catch (error) {
                       console.error('Export failed:', error)
-                      alert('Failed to export portfolio')
+                      toast.error('Failed to export portfolio')
                     }
                   }}
                 />

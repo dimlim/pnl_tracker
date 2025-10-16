@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +30,7 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
         : await utils.transactions.listAll.fetch()
 
       if (!transactions || transactions.length === 0) {
-        alert('No transactions to export')
+        toast.error('No transactions to export')
         setIsExporting(false)
         return
       }
@@ -80,7 +81,7 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
       document.body.removeChild(link)
     } catch (error) {
       console.error('Export failed:', error)
-      alert('Failed to export transactions')
+      toast.error('Failed to export transactions')
     } finally {
       setIsExporting(false)
     }
@@ -96,7 +97,7 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
         : await utils.transactions.listAll.fetch()
 
       if (!transactions || transactions.length === 0) {
-        alert('No transactions to export')
+        toast.error('No transactions to export')
         setIsExporting(false)
         return
       }
@@ -113,7 +114,7 @@ export function ExportTransactions({ portfolioId }: ExportTransactionsProps) {
       document.body.removeChild(link)
     } catch (error) {
       console.error('Export failed:', error)
-      alert('Failed to export transactions')
+      toast.error('Failed to export transactions')
     } finally {
       setIsExporting(false)
     }

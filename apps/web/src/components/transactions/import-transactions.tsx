@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { trpc } from '@/lib/trpc/client'
+import { toast } from 'sonner'
 
 export function ImportTransactions() {
   const [isOpen, setIsOpen] = useState(false)
@@ -56,7 +57,7 @@ export function ImportTransactions() {
       setPreview(data.slice(0, 5)) // Show first 5 rows
     } catch (error) {
       console.error('Failed to parse file:', error)
-      alert('Failed to parse file. Please check the format.')
+      toast.error('Failed to parse file. Please check the format.')
       setFile(null)
     }
   }
@@ -112,7 +113,7 @@ export function ImportTransactions() {
       utils.transactions.list.invalidate()
     } catch (error) {
       console.error('Import failed:', error)
-      alert('Import failed. Please check the file format.')
+      toast.error('Import failed. Please check the file format.')
     } finally {
       setImporting(false)
     }
