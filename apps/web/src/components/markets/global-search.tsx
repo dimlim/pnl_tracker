@@ -48,12 +48,12 @@ export function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Open dropdown when there are results
+  // Open dropdown when there are results or when searching
   useEffect(() => {
-    if (results && results.length > 0) {
+    if (debouncedQuery && (results || isLoading)) {
       setIsOpen(true)
     }
-  }, [results])
+  }, [results, isLoading, debouncedQuery])
 
   return (
     <div ref={searchRef} className="relative flex-1 max-w-md">
@@ -84,13 +84,30 @@ export function GlobalSearch() {
                   className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-1">
-                    <CryptoIcon symbol={coin.symbol} size={32} />
-                    <div>
-                      <div className="font-semibold">{coin.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {coin.symbol}
+                    {/* Icon with fallback */}
+                    {coin.iconUrl ? (
+                      <img 
+                        src={coin.iconUrl} 
+                        alt={coin.symbol}
+                        className="w-8 h-8 rounded-full"
+                        onError={(e) => {
+                          // Fallback to CryptoIcon if image fails
+                          e.currentTarget.style.display = 'none'
+                          const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                          if (fallback) fallback.style.display = 'block'
+                        }}
+                      />
+                    ) : null}
+                    <div style={{ display: coin.iconUrl ? 'none' : 'block' }}>
+                      <CryptoIcon symbol={coin.symbol} size={32} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">{coin.name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                        <span className="font-mono">{coin.symbol}</span>
                         {coin.rank !== 999999 && (
-                          <span className="ml-2">#{coin.rank}</span>
+                          <span className="text-xs">#{coin.rank}</span>
                         )}
                       </div>
                     </div>

@@ -386,26 +386,34 @@ export const marketsRouter = router({
         let results = await searchCoinGecko(input.query)
         console.log('CoinGecko search results:', results.length)
 
-        // Fallback: if no results, try searching in top markets
-        if (results.length === 0) {
-          console.log('No search results, trying fallback to markets')
-          const markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
-          const query = input.query.toLowerCase()
-          results = markets
-            .filter(m => 
-              m.name.toLowerCase().includes(query) || 
-              m.symbol.toLowerCase().includes(query)
-            )
-            .map(m => ({
-              id: m.id,
-              symbol: m.symbol,
-              name: m.name,
-              market_cap_rank: m.rank,
-              thumb: m.iconUrl,
-              large: m.iconUrl,
-            }))
-          console.log('Fallback results:', results.length)
-        }
+        // Always try fallback search in top markets for better results
+        console.log('Also searching in top markets for better coverage')
+        const markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
+        const query = input.query.toLowerCase()
+        const marketResults = markets
+          .filter(m => 
+            m.name.toLowerCase().includes(query) || 
+            m.symbol.toLowerCase().includes(query) ||
+            m.id.toLowerCase().includes(query)
+          )
+          .map(m => ({
+            id: m.id,
+            symbol: m.symbol,
+            name: m.name,
+            market_cap_rank: m.rank,
+            thumb: m.iconUrl,
+            large: m.iconUrl,
+          }))
+        
+        // Merge results, prioritize CoinGecko search but add market results
+        const existingIds = new Set(results.map((r: any) => r.id))
+        marketResults.forEach(mr => {
+          if (!existingIds.has(mr.id)) {
+            results.push(mr)
+          }
+        })
+        
+        console.log('Total results after merge:', results.length)
 
         // Get user's watchlist if authenticated
         let watchlistIds: string[] = []
@@ -418,15 +426,18 @@ export const marketsRouter = router({
           watchlistIds = watchlist?.map((w: any) => w.asset_id) || []
         }
 
-        // Format results
-        const formatted = results.slice(0, 20).map((coin: any) => ({
-          id: coin.id,
-          symbol: coin.symbol?.toUpperCase() || '',
-          name: coin.name,
-          rank: coin.market_cap_rank || 999999,
-          iconUrl: coin.thumb || coin.large || '',
-          isWatchlisted: watchlistIds.includes(coin.id),
-        }))
+        // Format results and sort by rank
+        const formatted = results
+          .map((coin: any) => ({
+            id: coin.id,
+            symbol: coin.symbol?.toUpperCase() || '',
+            name: coin.name,
+            rank: coin.market_cap_rank || 999999,
+            iconUrl: coin.thumb || coin.large || '',
+            isWatchlisted: watchlistIds.includes(coin.id),
+          }))
+          .sort((a: any, b: any) => a.rank - b.rank) // Sort by rank (lower rank = higher priority)
+          .slice(0, 50) // Return top 50 results
         
         console.log('Returning formatted results:', formatted.length)
         return formatted
