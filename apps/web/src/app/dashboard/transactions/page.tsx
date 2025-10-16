@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
 import { ExportTransactions } from '@/components/transactions/export-transactions'
 import { ImportTransactions } from '@/components/transactions/import-transactions'
+import { TransactionList } from '@/components/transactions/transaction-list'
 import { Number } from '@/components/ui/number'
 import {
   AlertDialog,
