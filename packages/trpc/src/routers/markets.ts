@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { Context } from '../context'
 import superjson from 'superjson'
+import { fetchCoinGeckoMarkets, type MarketData } from '../services/coingecko'
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -161,72 +162,94 @@ export const marketsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      // Start with mock data
-      let markets = [...MOCK_MARKET_DATA]
+      try {
+        // Fetch real data from CoinGecko
+        let markets = await fetchCoinGeckoMarkets({
+          perPage: input.perPage,
+          page: input.page,
+        })
 
-      // Filter by search
-      if (input.search) {
-        const query = input.search.toLowerCase()
-        markets = markets.filter(
-          (m) =>
-            m.name.toLowerCase().includes(query) ||
-            m.symbol.toLowerCase().includes(query)
-        )
-      }
+        // Filter by search
+        if (input.search) {
+          const query = input.search.toLowerCase()
+          markets = markets.filter(
+            (m) =>
+              m.name.toLowerCase().includes(query) ||
+              m.symbol.toLowerCase().includes(query)
+          )
+        }
 
-      // Filter by type
-      if (input.filter === 'watchlist' && ctx.user) {
-        const { data: watchlist } = await ctx.supabase
-          .from('watchlist')
-          .select('asset_id')
-          .eq('user_id', ctx.user.id)
+        // Filter by type
+        if (input.filter === 'watchlist' && ctx.user) {
+          const { data: watchlist } = await ctx.supabase
+            .from('watchlist')
+            .select('asset_id')
+            .eq('user_id', ctx.user.id)
 
-        const watchlistIds = watchlist?.map((w) => w.asset_id) || []
-        markets = markets.filter((m) => watchlistIds.includes(m.id))
-      } else if (input.filter === 'holdings' && ctx.user) {
-        // Get user's assets from positions
-        const { data: positions } = await ctx.supabase
-          .from('positions')
-          .select('asset_id, assets(symbol)')
-          .gt('quantity', 0)
-          .eq('portfolio_id', ctx.user.id)
+          const watchlistIds = watchlist?.map((w: any) => w.asset_id) || []
+          markets = markets.filter((m) => watchlistIds.includes(m.id))
+        } else if (input.filter === 'holdings' && ctx.user) {
+          // Get user's assets from positions
+          const { data: positions } = await ctx.supabase
+            .from('positions')
+            .select('asset_id, assets(symbol)')
+            .gt('quantity', 0)
+            .eq('portfolio_id', ctx.user.id)
 
-        const holdingSymbols =
-          positions?.map((p: any) => p.assets?.symbol.toLowerCase()) || []
-        markets = markets.filter((m) =>
-          holdingSymbols.includes(m.symbol.toLowerCase())
-        )
-      }
+          const holdingSymbols =
+            positions?.map((p: any) => p.assets?.symbol.toLowerCase()) || []
+          markets = markets.filter((m) =>
+            holdingSymbols.includes(m.symbol.toLowerCase())
+          )
+        }
 
-      // Sort
-      markets = sortMarkets(markets, input.sortBy)
+        // Sort
+        markets = sortMarkets(markets, input.sortBy)
 
-      // Add user-specific flags
-      if (ctx.user) {
-        const { data: watchlist } = await ctx.supabase
-          .from('watchlist')
-          .select('asset_id')
-          .eq('user_id', ctx.user.id)
+        // Add user-specific flags
+        if (ctx.user) {
+          const { data: watchlist } = await ctx.supabase
+            .from('watchlist')
+            .select('asset_id')
+            .eq('user_id', ctx.user.id)
 
-        const watchlistIds = watchlist?.map((w) => w.asset_id) || []
+          const watchlistIds = watchlist?.map((w: any) => w.asset_id) || []
 
-        markets = markets.map((m) => ({
-          ...m,
-          isWatchlisted: watchlistIds.includes(m.id),
-          isInPortfolio: false, // TODO: check actual holdings
-        }))
-      }
+          markets = markets.map((m) => ({
+            ...m,
+            isWatchlisted: watchlistIds.includes(m.id),
+            isInPortfolio: false, // TODO: check actual holdings
+          }))
+        }
 
-      // Pagination
-      const start = (input.page - 1) * input.perPage
-      const end = start + input.perPage
-      const paginatedMarkets = markets.slice(start, end)
+        return {
+          markets,
+          total: markets.length,
+          page: input.page,
+          perPage: input.perPage,
+        }
+      } catch (error) {
+        console.error('Failed to fetch markets:', error)
+        // Fallback to mock data on error
+        let markets = [...MOCK_MARKET_DATA]
+        
+        if (input.search) {
+          const query = input.search.toLowerCase()
+          markets = markets.filter(
+            (m) =>
+              m.name.toLowerCase().includes(query) ||
+              m.symbol.toLowerCase().includes(query)
+          )
+        }
 
-      return {
-        markets: paginatedMarkets,
-        total: markets.length,
-        page: input.page,
-        perPage: input.perPage,
+        markets = sortMarkets(markets, input.sortBy)
+
+        return {
+          markets,
+          total: markets.length,
+          page: input.page,
+          perPage: input.perPage,
+        }
       }
     }),
 
@@ -239,29 +262,31 @@ export const marketsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      let markets = [...MOCK_MARKET_DATA]
+      try {
+        let markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
 
-      // Sort by change percentage
-      markets.sort((a, b) => {
-        const aChange =
-          input.timeframe === '1h'
-            ? a.priceChange1h
-            : input.timeframe === '24h'
-            ? a.priceChange24h
-            : a.priceChange7d
-        const bChange =
-          input.timeframe === '1h'
-            ? b.priceChange1h
-            : input.timeframe === '24h'
-            ? b.priceChange24h
-            : b.priceChange7d
-        return bChange - aChange
-      })
+        // Sort by change percentage (descending for gainers)
+        markets.sort((a, b) => {
+          const aChange =
+            input.timeframe === '1h'
+              ? a.priceChange1h
+              : input.timeframe === '24h'
+              ? a.priceChange24h
+              : a.priceChange7d
+          const bChange =
+            input.timeframe === '1h'
+              ? b.priceChange1h
+              : input.timeframe === '24h'
+              ? b.priceChange24h
+              : b.priceChange7d
+          return bChange - aChange
+        })
 
-      return markets.slice(0, input.limit).map((m) => ({
-        ...m,
-        priceChangePercent24h: m.priceChange24h,
-      }))
+        return markets.slice(0, input.limit)
+      } catch (error) {
+        console.error('Failed to fetch top gainers:', error)
+        return MOCK_MARKET_DATA.slice(0, input.limit)
+      }
     }),
 
   // Get top losers
@@ -273,29 +298,31 @@ export const marketsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      let markets = [...MOCK_MARKET_DATA]
+      try {
+        let markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
 
-      // Sort by change percentage (ascending for losers)
-      markets.sort((a, b) => {
-        const aChange =
-          input.timeframe === '1h'
-            ? a.priceChange1h
-            : input.timeframe === '24h'
-            ? a.priceChange24h
-            : a.priceChange7d
-        const bChange =
-          input.timeframe === '1h'
-            ? b.priceChange1h
-            : input.timeframe === '24h'
-            ? b.priceChange24h
-            : b.priceChange7d
-        return aChange - bChange
-      })
+        // Sort by change percentage (ascending for losers)
+        markets.sort((a, b) => {
+          const aChange =
+            input.timeframe === '1h'
+              ? a.priceChange1h
+              : input.timeframe === '24h'
+              ? a.priceChange24h
+              : a.priceChange7d
+          const bChange =
+            input.timeframe === '1h'
+              ? b.priceChange1h
+              : input.timeframe === '24h'
+              ? b.priceChange24h
+              : b.priceChange7d
+          return aChange - bChange
+        })
 
-      return markets.slice(0, input.limit).map((m) => ({
-        ...m,
-        priceChangePercent24h: m.priceChange24h,
-      }))
+        return markets.slice(0, input.limit)
+      } catch (error) {
+        console.error('Failed to fetch top losers:', error)
+        return MOCK_MARKET_DATA.slice(0, input.limit)
+      }
     }),
 
   // Toggle watchlist
