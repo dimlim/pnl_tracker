@@ -115,11 +115,11 @@ export function TopGainersWidget() {
                     <div className="flex items-center justify-end gap-1">
                       <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
                       <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                        +{coin.priceChangePercent24h.toFixed(2)}%
+                        +{coin.priceChange24h.toFixed(2)}%
                       </span>
                     </div>
                     <div className="text-xs text-green-600 dark:text-green-400">
-                      +${Math.abs(coin.currentPrice * (coin.priceChangePercent24h / 100)).toFixed(2)}
+                      +${Math.abs(coin.currentPrice * (coin.priceChange24h / 100)).toFixed(2)}
                     </div>
                   </div>
 

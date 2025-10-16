@@ -115,11 +115,11 @@ export function TopLosersWidget() {
                     <div className="flex items-center justify-end gap-1">
                       <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
                       <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                        {coin.priceChangePercent24h.toFixed(2)}%
+                        {coin.priceChange24h.toFixed(2)}%
                       </span>
                     </div>
                     <div className="text-xs text-red-600 dark:text-red-400">
-                      ${(coin.currentPrice * (coin.priceChangePercent24h / 100)).toFixed(2)}
+                      ${(coin.currentPrice * (coin.priceChange24h / 100)).toFixed(2)}
                     </div>
                   </div>
 
