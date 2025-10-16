@@ -13,14 +13,22 @@ interface CryptoIconProps {
 export function CryptoIcon({ symbol, size = 24, className }: CryptoIconProps) {
   const [error, setError] = useState(false)
   const symbolLower = symbol.toLowerCase()
+  
+  // Use CoinGecko API images as primary source
+  const coinGeckoId = getCoinGeckoId(symbolLower)
 
-  if (error) {
+  if (error || !coinGeckoId) {
+    // Fallback to colored circle with symbol
     return (
       <div 
-        className={cn("relative flex-shrink-0 flex items-center justify-center bg-white/10 rounded-full text-xs font-semibold", className)}
+        className={cn(
+          "relative flex-shrink-0 flex items-center justify-center rounded-full text-xs font-bold",
+          "bg-gradient-to-br from-violet-500 to-fuchsia-500",
+          className
+        )}
         style={{ width: size, height: size }}
       >
-        {symbol.slice(0, 2)}
+        {symbol.slice(0, 2).toUpperCase()}
       </div>
     )
   }
@@ -31,7 +39,7 @@ export function CryptoIcon({ symbol, size = 24, className }: CryptoIconProps) {
       style={{ width: size, height: size }}
     >
       <Image
-        src={`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${symbolLower}.png`}
+        src={`https://assets.coingecko.com/coins/images/${coinGeckoId}/small/${symbolLower}.png`}
         alt={symbol}
         width={size}
         height={size}
@@ -41,4 +49,33 @@ export function CryptoIcon({ symbol, size = 24, className }: CryptoIconProps) {
       />
     </div>
   )
+}
+
+// Map common symbols to CoinGecko IDs
+function getCoinGeckoId(symbol: string): string | null {
+  const mapping: Record<string, string> = {
+    'btc': '1/bitcoin',
+    'eth': '279/ethereum',
+    'sol': '4128/solana',
+    'usdt': '325/tether',
+    'usdc': '6319/usd-coin',
+    'bnb': '825/binancecoin',
+    'xrp': '44/ripple',
+    'ada': '975/cardano',
+    'doge': '5/dogecoin',
+    'matic': '4713/matic-network',
+    'dot': '12171/polkadot',
+    'dai': '11841/dai',
+    'avax': '12559/avalanche-2',
+    'link': '1975/chainlink',
+    'uni': '12504/uniswap',
+    'atom': '3794/cosmos',
+    'ltc': '2/litecoin',
+    'etc': '1321/ethereum-classic',
+    'xlm': '5/stellar',
+    'algo': '4030/algorand',
+    'enso': '1/bitcoin', // Fallback for unknown
+  }
+  
+  return mapping[symbol] || null
 }

@@ -21,6 +21,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, Wallet, Edit, Trash2, Loader2 } fr
 import { formatCurrency, formatNumber, cn } from '@/lib/utils'
 import { format } from 'date-fns'
 import { AddTransactionDialog } from '@/components/transactions/add-transaction-dialog'
+import { TransactionList } from '@/components/transactions/transaction-list'
 
 export default function PortfolioDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -255,7 +256,18 @@ export default function PortfolioDetailsPage({ params }: { params: Promise<{ id:
       </Card>
 
       {/* Recent Transactions */}
-      <Card className="glass-strong border-white/10">
+      <TransactionList
+        transactions={transactions?.slice(0, 10) || []}
+        title="Recent Transactions"
+        isLoading={transactionsLoading}
+        showAsset={true}
+        showPortfolio={false}
+        showROI={true}
+        emptyMessage="No transactions yet. Add your first transaction to start tracking!"
+      />
+
+      {/* Old Card - keeping for reference */}
+      <Card className="hidden glass-strong border-white/10">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Transactions</CardTitle>
           <Button variant="ghost" size="sm" asChild>
