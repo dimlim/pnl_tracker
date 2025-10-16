@@ -382,38 +382,34 @@ export const marketsRouter = router({
       try {
         console.log('Searching for:', input.query)
         
-        // Use CoinGecko search API to find all coins
+        // Use CoinGecko search API to find ALL coins (not just top 250)
         let results = await searchCoinGecko(input.query)
-        console.log('CoinGecko search results:', results.length)
+        console.log('CoinGecko search API results:', results.length)
 
-        // Always try fallback search in top markets for better results
-        console.log('Also searching in top markets for better coverage')
-        const markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
-        const query = input.query.toLowerCase()
-        const marketResults = markets
-          .filter(m => 
-            m.name.toLowerCase().includes(query) || 
-            m.symbol.toLowerCase().includes(query) ||
-            m.id.toLowerCase().includes(query)
-          )
-          .map(m => ({
-            id: m.id,
-            symbol: m.symbol,
-            name: m.name,
-            market_cap_rank: m.rank,
-            thumb: m.iconUrl,
-            large: m.iconUrl,
-          }))
+        // If CoinGecko search returns results, use them
+        // Otherwise fallback to searching in top markets
+        if (results.length === 0) {
+          console.log('No results from search API, trying markets fallback')
+          const markets = await fetchCoinGeckoMarkets({ perPage: 250, page: 1 })
+          const query = input.query.toLowerCase()
+          results = markets
+            .filter(m => 
+              m.name.toLowerCase().includes(query) || 
+              m.symbol.toLowerCase().includes(query) ||
+              m.id.toLowerCase().includes(query)
+            )
+            .map(m => ({
+              id: m.id,
+              symbol: m.symbol,
+              name: m.name,
+              market_cap_rank: m.rank,
+              thumb: m.iconUrl,
+              large: m.iconUrl,
+            }))
+          console.log('Fallback results from markets:', results.length)
+        }
         
-        // Merge results, prioritize CoinGecko search but add market results
-        const existingIds = new Set(results.map((r: any) => r.id))
-        marketResults.forEach(mr => {
-          if (!existingIds.has(mr.id)) {
-            results.push(mr)
-          }
-        })
-        
-        console.log('Total results after merge:', results.length)
+        console.log('Total results:', results.length)
 
         // Get user's watchlist if authenticated
         let watchlistIds: string[] = []
