@@ -6,6 +6,7 @@ import type { Portfolio, Transaction, Asset } from '@crypto-pnl/types'
 import { computePnL } from '@crypto-pnl/pnl-engine'
 import { calculatePortfolioHistory, fetchHistoricalPricesFromCoinGecko } from '@crypto-pnl/pnl-engine/src/history'
 import superjson from 'superjson'
+import { marketsRouter } from './routers/markets'
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -1382,6 +1383,9 @@ export const appRouter = t.router({
         return transactions || []
       }),
   }),
+
+  // Markets
+  markets: marketsRouter,
 })
 
 export type AppRouter = typeof appRouter

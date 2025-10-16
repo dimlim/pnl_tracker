@@ -41,6 +41,9 @@ export function Navbar() {
             <Link href="/dashboard/transactions" className="text-sm font-medium hover:text-primary transition-colors">
               Transactions
             </Link>
+            <Link href="/dashboard/markets" className="text-sm font-medium hover:text-primary transition-colors">
+              Markets
+            </Link>
             <Link href="/dashboard/tax-reports" className="text-sm font-medium hover:text-primary transition-colors">
               Tax Reports
             </Link>
@@ -92,6 +95,13 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
             >
               Transactions
+            </Link>
+            <Link
+              href="/dashboard/markets"
+              className="block px-4 py-2 text-sm font-medium hover:bg-white/5 rounded-lg transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Markets
             </Link>
             <Link
               href="/dashboard/tax-reports"
