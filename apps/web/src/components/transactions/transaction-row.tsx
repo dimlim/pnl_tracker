@@ -80,7 +80,11 @@ export function TransactionRow({
             href={`/dashboard/assets/${tx.asset_id}`}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <CryptoIcon symbol={tx.assets.symbol} size={32} />
+            <CryptoIcon 
+              symbol={tx.assets.symbol} 
+              iconUrl={tx.assets.icon_url}
+              size={32} 
+            />
             <div>
               <div className="font-medium">{tx.assets.symbol}</div>
               <div className="text-xs text-muted-foreground">{tx.assets.name}</div>
