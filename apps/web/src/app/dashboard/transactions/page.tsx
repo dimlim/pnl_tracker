@@ -57,16 +57,53 @@ export default function TransactionsPage() {
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<any>(null)
   const [deletingTransactionId, setDeletingTransactionId] = useState<number | null>(null)
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false)
 
   const utils = trpc.useUtils()
   const { data: portfolios } = trpc.portfolios.list.useQuery()
   const { data: allTransactions, isLoading } = trpc.transactions.listAll.useQuery()
+  
+  // Bulk selection
+  const transactionsWithIds = useMemo(() => 
+    (allTransactions || []).filter((tx): tx is typeof tx & { id: number } => tx.id !== undefined),
+    [allTransactions]
+  )
+  
+  const {
+    selectedIds,
+    selectedCount,
+    toggleSelection,
+    selectAll,
+    deselectAll,
+    isSelected,
+    getSelectedItems,
+  } = useBulkSelection(transactionsWithIds)
+
+  // Confirm dialog
+  const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog()
 
   const deleteTransaction = trpc.transactions.delete.useMutation({
     onSuccess: () => {
       utils.transactions.listAll.invalidate()
       utils.positions.list.invalidate()
       setDeletingTransactionId(null)
+    },
+  })
+
+  const bulkDelete = trpc.transactions.bulkDelete.useMutation({
+    onSuccess: (data) => {
+      toast.success('Transactions deleted successfully', {
+        description: `${data.count} ${data.count === 1 ? 'transaction' : 'transactions'} deleted`
+      })
+      utils.transactions.listAll.invalidate()
+      utils.positions.list.invalidate()
+      utils.portfolios.listWithStats.invalidate()
+      deselectAll()
+    },
+    onError: (error) => {
+      toast.error('Failed to delete transactions', {
+        description: error.message
+      })
     },
   })
 
@@ -176,6 +213,60 @@ export default function TransactionsPage() {
       }
     })
   }, [portfolios, allTransactions])
+
+  // Bulk operation handlers
+  const handleBulkDelete = async () => {
+    const confirmed = await confirmDelete({
+      title: 'Delete Transactions?',
+      description: `Are you sure you want to delete ${selectedCount} ${selectedCount === 1 ? 'transaction' : 'transactions'}? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'destructive',
+    })
+
+    if (confirmed) {
+      const ids = Array.from(selectedIds) as number[]
+      bulkDelete.mutate({ ids })
+    }
+  }
+
+  const handleBulkExport = () => {
+    const selected = getSelectedItems()
+    
+    // CSV Headers
+    const headers = ['Date', 'Type', 'Symbol', 'Asset Name', 'Quantity', 'Price', 'Fee', 'Total', 'Portfolio']
+    
+    // CSV Rows
+    const rows = selected.map((tx: any) => [
+      new Date(tx.timestamp).toISOString(),
+      tx.type,
+      tx.assets?.symbol || '',
+      tx.assets?.name || '',
+      tx.quantity,
+      tx.price,
+      tx.fee || 0,
+      tx.quantity * tx.price,
+      tx.portfolios?.name || '',
+    ])
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n')
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `selected_transactions_${Date.now()}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success('Transactions exported successfully')
+    deselectAll()
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -296,6 +387,9 @@ export default function TransactionsPage() {
         showPortfolio={true}
         showROI={true}
         emptyMessage="No transactions found. Try adjusting your filters."
+        isSelectionMode={selectedCount > 0}
+        selectedIds={selectedIds}
+        onSelectionChange={toggleSelection}
       />
 
       {/* Old Card - keeping for reference, will remove after testing */}
@@ -513,6 +607,29 @@ export default function TransactionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Actions Bar */}
+      <BulkActionsBar
+        selectedCount={selectedCount}
+        totalCount={filteredTransactions.length}
+        onSelectAll={selectAll}
+        onDeselectAll={deselectAll}
+        onDelete={handleBulkDelete}
+        onMove={() => setIsMoveDialogOpen(true)}
+        onExport={handleBulkExport}
+        onCancel={deselectAll}
+      />
+
+      {/* Bulk Move Dialog */}
+      <BulkMoveDialog
+        open={isMoveDialogOpen}
+        onOpenChange={setIsMoveDialogOpen}
+        transactionIds={Array.from(selectedIds) as number[]}
+        onSuccess={deselectAll}
+      />
+
+      {/* Confirm Delete Dialog */}
+      {deleteDialog}
     </div>
   )
 }

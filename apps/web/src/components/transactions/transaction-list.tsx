@@ -17,6 +17,10 @@ interface TransactionListProps {
   onEdit?: (transaction: any) => void
   onBulkDelete?: (transactionIds: number[]) => void
   emptyMessage?: string
+  // External selection control (optional)
+  isSelectionMode?: boolean
+  selectedIds?: Set<string | number>
+  onSelectionChange?: (id: string | number) => void
 }
 
 export function TransactionList({
@@ -30,16 +34,35 @@ export function TransactionList({
   onEdit,
   onBulkDelete,
   emptyMessage = 'No transactions yet',
+  isSelectionMode: externalSelectionMode,
+  selectedIds: externalSelectedIds,
+  onSelectionChange: externalOnSelectionChange,
 }: TransactionListProps) {
-  const [isSelectionMode, setIsSelectionMode] = useState(false)
-  const [selectedTransactions, setSelectedTransactions] = useState<number[]>([])
+  const [internalSelectionMode, setInternalSelectionMode] = useState(false)
+  const [internalSelectedTransactions, setInternalSelectedTransactions] = useState<number[]>([])
+
+  // Use external state if provided, otherwise use internal
+  const isSelectionMode = externalSelectionMode !== undefined ? externalSelectionMode : internalSelectionMode
+  const selectedTransactions = externalSelectedIds 
+    ? Array.from(externalSelectedIds).filter(id => typeof id === 'number') as number[]
+    : internalSelectedTransactions
+
+  const handleSelectionChange = (id: number, checked: boolean) => {
+    if (externalOnSelectionChange) {
+      externalOnSelectionChange(id)
+    } else {
+      setInternalSelectedTransactions(prev =>
+        checked ? [...prev, id] : prev.filter(txId => txId !== id)
+      )
+    }
+  }
 
   const handleBulkDelete = () => {
     if (onBulkDelete && selectedTransactions.length > 0) {
       if (confirm(`Delete ${selectedTransactions.length} transaction(s)?`)) {
         onBulkDelete(selectedTransactions)
-        setSelectedTransactions([])
-        setIsSelectionMode(false)
+        setInternalSelectedTransactions([])
+        setInternalSelectionMode(false)
       }
     }
   }
@@ -54,7 +77,7 @@ export function TransactionList({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsSelectionMode(true)}
+                onClick={() => setInternalSelectionMode(true)}
               >
                 <CheckSquare className="w-4 h-4 mr-2" />
                 Select
@@ -65,8 +88,8 @@ export function TransactionList({
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    setIsSelectionMode(false)
-                    setSelectedTransactions([])
+                    setInternalSelectionMode(false)
+                    setInternalSelectedTransactions([])
                   }}
                 >
                   <X className="w-4 h-4 mr-2" />
@@ -103,13 +126,7 @@ export function TransactionList({
                 currentPrice={currentPrice}
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedTransactions.includes(tx.id)}
-                onSelectionChange={(checked) => {
-                  if (checked) {
-                    setSelectedTransactions([...selectedTransactions, tx.id])
-                  } else {
-                    setSelectedTransactions(selectedTransactions.filter(id => id !== tx.id))
-                  }
-                }}
+                onSelectionChange={(checked) => handleSelectionChange(tx.id, checked)}
                 onEdit={onEdit ? () => onEdit(tx) : undefined}
                 showAsset={showAsset}
                 showPortfolio={showPortfolio}
