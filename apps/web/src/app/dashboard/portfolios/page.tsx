@@ -22,6 +22,8 @@ import { PortfolioSummaryBar } from '@/components/portfolio/portfolio-summary-ba
 import { PortfolioFilters } from '@/components/portfolio/portfolio-filters'
 import { ImportTransactions } from '@/components/transactions/import-transactions'
 import { ExportTransactions } from '@/components/transactions/export-transactions'
+import { useConfirmDialog } from '@/components/ui/confirm-dialog'
+import { usePromptDialog } from '@/components/ui/prompt-dialog'
 
 export default function PortfoliosPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -34,6 +36,11 @@ export default function PortfoliosPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'value' | 'roi' | 'name' | 'updated'>('value')
   const [currencyFilter, setCurrencyFilter] = useState('all')
+
+  // Custom dialogs
+  const { confirm: confirmDelete, dialog: deleteDialog } = useConfirmDialog()
+  const { prompt: promptName, dialog: nameDialog } = usePromptDialog()
+  const { confirm: confirmCopy, dialog: copyDialog } = useConfirmDialog()
 
   const utils = trpc.useUtils()
   const { data: portfolios, isLoading } = trpc.portfolios.listWithStats.useQuery()
@@ -293,30 +300,39 @@ export default function PortfoliosPage() {
               sparklineData={[100, 105, 103, 108, 112, 110, 115]} // Mock data
               index={index}
               onEdit={() => window.location.href = `/dashboard/portfolios/${portfolio.id}`}
-              onDelete={() => {
-                const confirmMessage = `Delete portfolio "${portfolio.name}"?\n\n` +
-                  `This will permanently delete:\n` +
-                  `- Portfolio settings\n` +
-                  `- ${portfolio.stats?.assetCount || 0} assets\n` +
-                  `- All transactions\n\n` +
-                  `This action cannot be undone!`
+              onDelete={async () => {
+                const confirmed = await confirmDelete({
+                  title: `Delete "${portfolio.name}"?`,
+                  description: `This will permanently delete:\n• Portfolio settings\n• ${portfolio.stats?.assetCount || 0} assets\n• All transactions\n\nThis action cannot be undone!`,
+                  confirmText: 'Delete Portfolio',
+                  cancelText: 'Cancel',
+                  variant: 'destructive',
+                })
                 
-                if (confirm(confirmMessage)) {
+                if (confirmed) {
                   deletePortfolio.mutate({ id: portfolio.id })
                 }
               }}
-              onDuplicate={() => {
-                const newName = prompt('Enter name for duplicated portfolio:', `${portfolio.name} (Copy)`)
-                if (newName && newName.trim()) {
-                  const copyTransactions = confirm(
-                    `Copy all transactions from "${portfolio.name}"?\n\n` +
-                    `Yes - Full copy with all transactions\n` +
-                    `No - Empty portfolio with same settings`
-                  )
+              onDuplicate={async () => {
+                const newName = await promptName({
+                  title: 'Duplicate Portfolio',
+                  description: `Create a copy of "${portfolio.name}"`,
+                  defaultValue: `${portfolio.name} (Copy)`,
+                  placeholder: 'Enter portfolio name',
+                  confirmText: 'Next',
+                })
+                
+                if (newName) {
+                  const copyTransactions = await confirmCopy({
+                    title: 'Copy Transactions?',
+                    description: `Do you want to copy all transactions from "${portfolio.name}"?\n\n• Yes - Full copy with all transactions\n• No - Empty portfolio with same settings`,
+                    confirmText: 'Copy Transactions',
+                    cancelText: 'Empty Portfolio',
+                  })
                   
                   duplicatePortfolio.mutate({
                     id: portfolio.id,
-                    newName: newName.trim(),
+                    newName,
                     copyTransactions,
                   })
                 }
@@ -395,6 +411,11 @@ export default function PortfoliosPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Custom Dialogs */}
+      {deleteDialog}
+      {nameDialog}
+      {copyDialog}
     </div>
   )
 }
