@@ -263,7 +263,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  "Best crypto portfolio tracker I've used. The tax reports alone are worth the premium subscription!"
+                  &ldquo;Best crypto portfolio tracker I&apos;ve used. The tax reports alone are worth the premium subscription!&rdquo;
                 </p>
                 <p className="font-semibold">Alex M.</p>
                 <p className="text-sm text-muted-foreground">Day Trader</p>
@@ -278,7 +278,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  "Finally, a tracker that handles FIFO/LIFO correctly. The insights feature is incredibly helpful."
+                  &ldquo;Finally, a tracker that handles FIFO/LIFO correctly. The insights feature is incredibly helpful.&rdquo;
                 </p>
                 <p className="font-semibold">Sarah K.</p>
                 <p className="text-sm text-muted-foreground">Investor</p>
@@ -293,7 +293,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  "Clean interface, powerful features. Exactly what I needed for managing multiple portfolios."
+                  &ldquo;Clean interface, powerful features. Exactly what I needed for managing multiple portfolios.&rdquo;
                 </p>
                 <p className="font-semibold">Mike R.</p>
                 <p className="text-sm text-muted-foreground">Portfolio Manager</p>
