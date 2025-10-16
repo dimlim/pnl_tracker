@@ -14,6 +14,7 @@ import { TopLosersWidget } from '@/components/markets/top-losers-widget'
 import { PercentBadge } from '@/components/markets/percent-badge'
 import { MiniSparkline } from '@/components/markets/mini-sparkline'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
+import { GlobalSearch } from '@/components/markets/global-search'
 import { useDebounce } from '@/hooks/use-debounce'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -149,32 +150,43 @@ export default function MarketsPage() {
       {/* Main Table Card */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search cryptocurrencies..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            {/* Global Search - Can find ALL cryptocurrencies */}
+            <div className="flex items-center gap-4">
+              <GlobalSearch />
+              <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                Search 10,000+ coins
+              </div>
             </div>
 
-            {/* Filter Tabs */}
-            <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="watchlist">
-                  Watchlist ({watchlistCount || 0})
-                </TabsTrigger>
-                <TabsTrigger value="holdings">Holdings ({holdingsCount})</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {/* Filters and Table Search */}
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+              {/* Table Filter Search */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Filter table..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
 
-            {/* Sort Info */}
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Click column headers to sort
+              {/* Filter Tabs */}
+              <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+                <TabsList>
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="watchlist">
+                    Watchlist ({watchlistCount || 0})
+                  </TabsTrigger>
+                  <TabsTrigger value="holdings">Holdings ({holdingsCount})</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {/* Sort Info */}
+              <div className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                Click headers to sort
+              </div>
             </div>
           </div>
         </CardHeader>

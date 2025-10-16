@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { Context } from '../context'
 import superjson from 'superjson'
-import { fetchCoinGeckoMarkets, type MarketData } from '../services/coingecko'
+import { fetchCoinGeckoMarkets, searchCoinGecko, type MarketData } from '../services/coingecko'
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -370,6 +370,44 @@ export const marketsRouter = router({
 
     return count || 0
   }),
+
+  // Search all cryptocurrencies (including those outside top 100)
+  search: publicProcedure
+    .input(
+      z.object({
+        query: z.string().min(1),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        // Use CoinGecko search API to find all coins
+        const results = await searchCoinGecko(input.query)
+
+        // Get user's watchlist if authenticated
+        let watchlistIds: string[] = []
+        if (ctx.user) {
+          const { data: watchlist } = await ctx.supabase
+            .from('watchlist')
+            .select('asset_id')
+            .eq('user_id', ctx.user.id)
+
+          watchlistIds = watchlist?.map((w: any) => w.asset_id) || []
+        }
+
+        // Format results
+        return results.slice(0, 20).map((coin: any) => ({
+          id: coin.id,
+          symbol: coin.symbol?.toUpperCase() || '',
+          name: coin.name,
+          rank: coin.market_cap_rank || 999999,
+          iconUrl: coin.thumb || coin.large || '',
+          isWatchlisted: watchlistIds.includes(coin.id),
+        }))
+      } catch (error) {
+        console.error('Failed to search coins:', error)
+        return []
+      }
+    }),
 })
 
 // Helper function to sort markets
