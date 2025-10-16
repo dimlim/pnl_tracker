@@ -213,7 +213,7 @@ export default function MarketsPage() {
                           <div>
                             <div className="font-semibold flex items-center gap-2">
                               {coin.name}
-                              {coin.isInPortfolio && (
+                              {(coin as any).isInPortfolio && (
                                 <Badge variant="outline" className="text-xs">
                                   Holding
                                 </Badge>
@@ -282,7 +282,7 @@ export default function MarketsPage() {
                             <Star
                               className={cn(
                                 'w-4 h-4',
-                                coin.isWatchlisted &&
+                                (coin as any).isWatchlisted &&
                                   'fill-yellow-400 text-yellow-400 dark:fill-yellow-500 dark:text-yellow-500'
                               )}
                             />
