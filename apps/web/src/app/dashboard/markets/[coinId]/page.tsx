@@ -24,6 +24,7 @@ import { trpc } from '@/lib/trpc'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { PriceChartWithTransactions } from '@/components/charts/price-chart-with-transactions'
 
 function formatPrice(price: number): string {
   if (price < 0.01) return `$${price.toFixed(6)}`
@@ -58,6 +59,12 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   // Get portfolio holdings for this coin
   const { data: holdings, isLoading: holdingsLoading, error: holdingsError } = trpc.markets.getCoinHoldings.useQuery(
     { coinId },
+    { enabled: !!coin }
+  )
+
+  // Get price history with transactions
+  const { data: priceHistory } = trpc.markets.getPriceHistory.useQuery(
+    { coinId, days: 7 },
     { enabled: !!coin }
   )
 
@@ -436,25 +443,14 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
           </div>
         </CardHeader>
         <CardContent>
-          {/* Sparkline */}
           {coin.sparkline7d && coin.sparkline7d.length > 0 ? (
-            <div className="h-64 flex items-end gap-1">
-              {coin.sparkline7d.map((value: number, i: number) => {
-                const min = Math.min(...coin.sparkline7d)
-                const max = Math.max(...coin.sparkline7d)
-                const height = ((value - min) / (max - min)) * 100
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      'flex-1 rounded-t',
-                      isPositive ? 'bg-green-500/20' : 'bg-red-500/20'
-                    )}
-                    style={{ height: `${height}%` }}
-                  />
-                )
-              })}
-            </div>
+            <PriceChartWithTransactions
+              sparkline={coin.sparkline7d}
+              transactions={priceHistory?.transactions || []}
+              avgBuyPrice={holdings?.avgBuyPrice}
+              symbol={coin.symbol}
+              currentPrice={coin.currentPrice}
+            />
           ) : (
             <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
               Chart data not available

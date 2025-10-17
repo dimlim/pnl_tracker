@@ -628,6 +628,77 @@ export const marketsRouter = router({
         return null
       }
     }),
+
+  // Get price history with user transactions for chart
+  getPriceHistory: protectedProcedure
+    .input(
+      z.object({
+        coinId: z.string(),
+        days: z.number().default(7), // 1, 7, 30, 90, 365
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        // Find asset
+        let asset = null
+        
+        const { data: assetByCoinGeckoId } = await ctx.supabase
+          .from('assets')
+          .select('id, symbol, name, coingecko_id')
+          .eq('coingecko_id', input.coinId)
+          .maybeSingle()
+
+        if (assetByCoinGeckoId) {
+          asset = assetByCoinGeckoId
+        } else {
+          const { data: assetBySymbol } = await ctx.supabase
+            .from('assets')
+            .select('id, symbol, name, coingecko_id')
+            .ilike('symbol', input.coinId)
+            .maybeSingle()
+          
+          asset = assetBySymbol
+        }
+
+        if (!asset) {
+          return { prices: [], transactions: [] }
+        }
+
+        // Get user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id')
+          .eq('user_id', ctx.user.id)
+
+        const portfolioIds = portfolios?.map(p => p.id) || []
+
+        // Get user transactions for this asset
+        const { data: transactions } = await ctx.supabase
+          .from('transactions')
+          .select('*')
+          .eq('asset_id', asset.id)
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: true })
+
+        // Get historical prices from CoinGecko
+        // For now, return empty array - will be filled by frontend from sparkline
+        // In future, can call CoinGecko API here
+        
+        return {
+          prices: [], // Will use sparkline from markets data
+          transactions: (transactions || []).map(tx => ({
+            timestamp: tx.timestamp,
+            type: tx.type,
+            quantity: Number(tx.quantity),
+            price: Number(tx.price),
+            fee: Number(tx.fee || 0),
+          })),
+        }
+      } catch (error) {
+        console.error('Failed to get price history:', error)
+        return { prices: [], transactions: [] }
+      }
+    }),
 })
 
 // Helper function to sort markets
