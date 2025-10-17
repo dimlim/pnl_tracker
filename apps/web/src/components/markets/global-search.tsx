@@ -143,7 +143,7 @@ export function GlobalSearch() {
           ) : (
             <div className="py-8 px-4 text-center">
               <div className="text-gray-500 dark:text-gray-400 mb-2">
-                No cryptocurrencies found for "{query}"
+                No cryptocurrencies found for &quot;{query}&quot;
               </div>
               <div className="text-xs text-gray-400 dark:text-gray-500">
                 Try searching by full name or different spelling
