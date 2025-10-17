@@ -96,7 +96,7 @@ export function WatchlistWidget() {
             {markets.map((coin) => (
               <Link
                 key={coin.id}
-                href={`/dashboard/assets/${coin.id}`}
+                href={`/dashboard/markets/${coin.id}`}
                 className="flex items-center justify-between p-3 rounded-lg hover:bg-white/50 dark:hover:bg-white/5 transition-colors group"
               >
                 <div className="flex items-center gap-3 flex-1">

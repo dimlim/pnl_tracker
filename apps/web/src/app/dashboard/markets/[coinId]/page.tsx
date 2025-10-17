@@ -1,0 +1,332 @@
+'use client'
+
+import { use, useState } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  ArrowLeft, 
+  TrendingUp, 
+  TrendingDown, 
+  Star,
+  Plus,
+  ExternalLink,
+  Globe,
+  Twitter,
+  Github
+} from 'lucide-react'
+import { trpc } from '@/lib/trpc'
+import { CryptoIcon } from '@/components/ui/crypto-icon'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+
+function formatPrice(price: number): string {
+  if (price < 0.01) return `$${price.toFixed(6)}`
+  if (price < 1) return `$${price.toFixed(4)}`
+  if (price < 100) return `$${price.toFixed(2)}`
+  return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+function formatMarketCap(value: number): string {
+  if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
+  return `$${value.toLocaleString()}`
+}
+
+export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: string }> }) {
+  const { coinId } = use(params)
+  const [chartPeriod, setChartPeriod] = useState<'24h' | '7d' | '30d' | '90d' | '1y'>('7d')
+
+  const utils = trpc.useUtils()
+
+  // Get coin data from markets endpoint
+  const { data: marketsData, isLoading } = trpc.markets.getAll.useQuery({
+    filter: 'all',
+    sortBy: 'market_cap_desc',
+    page: 1,
+    perPage: 250,
+  })
+
+  const coin = marketsData?.markets.find((m) => m.id === coinId)
+
+  const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.added ? 'Added to watchlist' : 'Removed from watchlist')
+      utils.markets.getAll.invalidate()
+    },
+    onError: () => {
+      toast.error('Failed to update watchlist')
+    },
+  })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="h-12 w-64 bg-gray-200 dark:bg-gray-800 rounded animate-pulse" />
+        <div className="grid gap-6 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 bg-gray-200 dark:bg-gray-800 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!coin) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500 dark:text-gray-400">Cryptocurrency not found</p>
+        <Button asChild className="mt-4">
+          <Link href="/dashboard/markets">Back to Markets</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  const isPositive = coin.priceChange24h >= 0
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/dashboard/markets">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Markets
+            </Link>
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toggleWatchlist.mutate({ assetId: coin.id })}
+            disabled={toggleWatchlist.isPending}
+          >
+            <Star
+              className={cn(
+                'w-4 h-4 mr-2',
+                (coin as any).isWatchlisted &&
+                  'fill-yellow-400 text-yellow-400 dark:fill-yellow-500 dark:text-yellow-500'
+              )}
+            />
+            {(coin as any).isWatchlisted ? 'In Watchlist' : 'Add to Watchlist'}
+          </Button>
+
+          <Button size="sm" asChild>
+            <Link href={`/dashboard/transactions?asset=${coin.id}`}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Transaction
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Coin Header */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-4">
+              {/* Icon */}
+              {coin.iconUrl ? (
+                <img 
+                  src={coin.iconUrl} 
+                  alt={coin.symbol}
+                  className="w-16 h-16 rounded-full"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement
+                    if (fallback) fallback.style.display = 'block'
+                  }}
+                />
+              ) : null}
+              <div style={{ display: coin.iconUrl ? 'none' : 'block' }}>
+                <CryptoIcon symbol={coin.symbol} size={64} />
+              </div>
+
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold">{coin.name}</h1>
+                  <span className="text-xl text-gray-500 dark:text-gray-400 font-mono">
+                    {coin.symbol}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    #{coin.rank}
+                  </span>
+                </div>
+
+                <div className="flex items-baseline gap-4 mt-2">
+                  <span className="text-4xl font-bold">
+                    {formatPrice(coin.currentPrice)}
+                  </span>
+                  <div className={cn(
+                    'flex items-center gap-1 text-lg font-semibold',
+                    isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  )}>
+                    {isPositive ? (
+                      <TrendingUp className="w-5 h-5" />
+                    ) : (
+                      <TrendingDown className="w-5 h-5" />
+                    )}
+                    <span>
+                      {isPositive ? '+' : ''}
+                      {coin.priceChange24h.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats Grid */}
+      <div className="grid gap-6 md:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Market Cap
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatMarketCap(coin.marketCap)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              24h Volume
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatMarketCap(coin.volume24h)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              1h Change
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={cn(
+              'text-2xl font-bold',
+              coin.priceChange1h >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            )}>
+              {coin.priceChange1h >= 0 ? '+' : ''}
+              {coin.priceChange1h.toFixed(2)}%
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              7d Change
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={cn(
+              'text-2xl font-bold',
+              coin.priceChange7d >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+            )}>
+              {coin.priceChange7d >= 0 ? '+' : ''}
+              {coin.priceChange7d.toFixed(2)}%
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Chart Placeholder */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Price Chart</CardTitle>
+            <div className="flex gap-2">
+              {(['24h', '7d', '30d', '90d', '1y'] as const).map((period) => (
+                <Button
+                  key={period}
+                  variant={chartPeriod === period ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setChartPeriod(period)}
+                >
+                  {period}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Sparkline */}
+          {coin.sparkline7d && coin.sparkline7d.length > 0 ? (
+            <div className="h-64 flex items-end gap-1">
+              {coin.sparkline7d.map((value: number, i: number) => {
+                const min = Math.min(...coin.sparkline7d)
+                const max = Math.max(...coin.sparkline7d)
+                const height = ((value - min) / (max - min)) * 100
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      'flex-1 rounded-t',
+                      isPositive ? 'bg-green-500/20' : 'bg-red-500/20'
+                    )}
+                    style={{ height: `${height}%` }}
+                  />
+                )
+              })}
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+              Chart data not available
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* About */}
+      <Card>
+        <CardHeader>
+          <CardTitle>About {coin.name}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Symbol</div>
+                <div className="font-mono font-semibold">{coin.symbol}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Rank</div>
+                <div className="font-semibold">#{coin.rank}</div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+              <Button variant="outline" size="sm" asChild>
+                <a 
+                  href={`https://www.coingecko.com/en/coins/${coinId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View on CoinGecko
+                </a>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

@@ -105,7 +105,7 @@ export function GlobalSearch() {
               {results.map((coin: any) => (
                 <Link
                   key={coin.id}
-                  href={`/dashboard/assets/${coin.id}`}
+                  href={`/dashboard/markets/${coin.id}`}
                   className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
                   onClick={() => setIsOpen(false)}
                 >
