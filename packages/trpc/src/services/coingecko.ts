@@ -56,6 +56,34 @@ export interface MarketData {
 }
 
 /**
+ * Retry helper for fetch requests
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit = {},
+  retries = 3,
+  delay = 1000
+): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      })
+      return response
+    } catch (error) {
+      const isLastAttempt = i === retries - 1
+      if (isLastAttempt) throw error
+      
+      console.warn(`⚠️ Fetch attempt ${i + 1} failed, retrying in ${delay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      delay *= 2 // Exponential backoff
+    }
+  }
+  throw new Error('All retry attempts failed')
+}
+
+/**
  * Fetch markets data from CoinGecko
  */
 export async function fetchCoinGeckoMarkets(params: {
@@ -75,7 +103,7 @@ export async function fetchCoinGeckoMarkets(params: {
 
     console.log('🌐 Calling CoinGecko API:', url.toString())
 
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithRetry(url.toString(), {
       headers: {
         'Accept': 'application/json',
       },

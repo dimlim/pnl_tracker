@@ -231,9 +231,15 @@ export const marketsRouter = router({
           page: input.page,
           perPage: input.perPage,
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Failed to fetch markets from CoinGecko:', error)
+        console.error('⚠️ Error details:', {
+          message: error?.message,
+          cause: error?.cause,
+          stack: error?.stack?.split('\n')[0]
+        })
         console.error('⚠️ Falling back to MOCK DATA')
+        
         // Fallback to mock data on error
         let markets = [...MOCK_MARKET_DATA]
         
