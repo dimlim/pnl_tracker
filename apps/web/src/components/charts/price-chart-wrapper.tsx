@@ -17,7 +17,7 @@ export function PriceChartWrapper({ coinId, days, period, coin, holdings }: Pric
     { coinId, days },
     { 
       enabled: !!coin,
-      staleTime: 300000, // Cache for 5 minutes (matches server cache)
+      staleTime: 600000, // Cache for 10 minutes (matches server cache)
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
     }

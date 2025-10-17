@@ -8,7 +8,7 @@ import { fetchCoinMarketCapHistory } from '../services/coinmarketcap'
 
 // Simple in-memory cache for price history to avoid rate limiting
 const priceHistoryCache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_TTL = 300000 // 5 minutes (300 seconds) - increased to reduce API calls
+const CACHE_TTL = 600000 // 10 minutes (600 seconds) - increased to reduce API pressure
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
@@ -733,33 +733,10 @@ export const marketsRouter = router({
               error: errorText
             })
 
-            // If rate limited (429), try CoinMarketCap first, then CoinCap
+            // If rate limited (429), try CoinCap as fallback
             if (response.status === 429) {
-              console.warn('⚠️ CoinGecko rate limited! Trying CoinMarketCap fallback...')
+              console.warn('⚠️ CoinGecko rate limited! Trying CoinCap fallback...')
               
-              // Try CoinMarketCap first
-              const cmcPrices = await fetchCoinMarketCapHistory(input.coinId, input.days)
-              
-              if (cmcPrices.length > 0) {
-                console.log('✅ CoinMarketCap fallback successful:', { pricesCount: cmcPrices.length })
-                
-                const result = {
-                  prices: cmcPrices,
-                  transactions: (transactions || []).map(tx => ({
-                    timestamp: tx.timestamp,
-                    type: tx.type,
-                    quantity: Number(tx.quantity),
-                    price: Number(tx.price),
-                    fee: Number(tx.fee || 0),
-                  })),
-                }
-
-                // Cache the CoinMarketCap result
-                priceHistoryCache.set(cacheKey, { data: result, timestamp: Date.now() })
-                return result
-              }
-              
-              console.warn('⚠️ CoinMarketCap also failed, trying CoinCap...')
               const coincapPrices = await fetchCoinCapHistory(input.coinId, input.days)
               
               if (coincapPrices.length > 0) {
