@@ -42,7 +42,9 @@ function formatMarketCap(value: number): string {
 
 export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: string }> }) {
   const { coinId } = use(params)
-  const [chartPeriod, setChartPeriod] = useState<'1d' | '7d' | '14d' | '30d' | '90d' | '180d' | '1y'>('7d')
+  const [chartPeriod, setChartPeriod] = useState<'24h' | '7d' | '1m' | '3m' | '1y' | 'max'>('7d')
+  const [chartType, setChartType] = useState<'line' | 'candle'>('line')
+  const [isLogScale, setIsLogScale] = useState(false)
 
   const utils = trpc.useUtils()
 
@@ -64,13 +66,12 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
 
   // Map chart period to days for CoinGecko API
   const daysMap: Record<typeof chartPeriod, number> = {
-    '1d': 1,      // 24 hours
+    '24h': 1,     // 24 hours
     '7d': 7,      // 1 week
-    '14d': 14,    // 2 weeks
-    '30d': 30,    // 1 month
-    '90d': 90,    // 3 months
-    '180d': 180,  // 6 months
+    '1m': 30,     // 1 month
+    '3m': 90,     // 3 months
     '1y': 365,    // 1 year
+    'max': 'max' as any, // All available data
   }
 
   // Get price history with transactions
@@ -452,23 +453,58 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
         </Card>
       )}
 
-      {/* Chart Placeholder */}
+      {/* Chart */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Price Chart</CardTitle>
-            <div className="flex gap-2 flex-wrap">
-              {(['1d', '7d', '14d', '30d', '90d', '180d', '1y'] as const).map((period) => (
+        <CardHeader className="space-y-4">
+          <CardTitle>Price Chart</CardTitle>
+          
+          {/* Chart Controls - CoinGecko Style */}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            {/* Chart Type Selector */}
+            <div className="flex gap-2">
+              <Button
+                variant={chartType === 'line' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setChartType('line')}
+                className="h-8"
+              >
+                📈 Line
+              </Button>
+              <Button
+                variant={chartType === 'candle' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setChartType('candle')}
+                className="h-8"
+              >
+                📊 Candle
+              </Button>
+            </div>
+
+            {/* Period Selector */}
+            <div className="flex gap-1">
+              {(['24h', '7d', '1m', '3m', '1y', 'max'] as const).map((period) => (
                 <Button
                   key={period}
-                  variant={chartPeriod === period ? 'default' : 'outline'}
+                  variant={chartPeriod === period ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setChartPeriod(period)}
-                  className="min-w-[50px]"
+                  className="h-8 px-3 font-medium"
                 >
-                  {period}
+                  {period.toUpperCase()}
                 </Button>
               ))}
+            </div>
+
+            {/* Options */}
+            <div className="flex gap-2">
+              <Button
+                variant={isLogScale ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setIsLogScale(!isLogScale)}
+                className="h-8"
+              >
+                LOG
+              </Button>
             </div>
           </div>
         </CardHeader>
