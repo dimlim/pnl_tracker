@@ -491,16 +491,35 @@ export const marketsRouter = router({
     )
     .query(async ({ input, ctx }) => {
       try {
-        // Find asset by CoinGecko ID
-        const { data: asset } = await ctx.supabase
+        // Find asset by CoinGecko ID or symbol (case-insensitive)
+        let asset = null
+        
+        // Try by coingecko_id first
+        const { data: assetByCoinGeckoId } = await ctx.supabase
           .from('assets')
-          .select('id, symbol, name')
+          .select('id, symbol, name, coingecko_id')
           .eq('coingecko_id', input.coinId)
           .single()
 
+        if (assetByCoinGeckoId) {
+          asset = assetByCoinGeckoId
+        } else {
+          // Try by symbol (case-insensitive)
+          const { data: assetBySymbol } = await ctx.supabase
+            .from('assets')
+            .select('id, symbol, name, coingecko_id')
+            .ilike('symbol', input.coinId)
+            .single()
+          
+          asset = assetBySymbol
+        }
+
         if (!asset) {
+          console.log('Asset not found for coinId:', input.coinId)
           return null
         }
+
+        console.log('Found asset:', asset)
 
         // Get all positions for this asset across all portfolios
         const { data: positions } = await ctx.supabase
