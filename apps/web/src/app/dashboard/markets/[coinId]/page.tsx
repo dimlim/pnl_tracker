@@ -65,35 +65,27 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   )
 
   // Map chart period to days for CoinGecko API
-  const daysMap: Record<typeof chartPeriod, number> = {
-    '24h': 1,     // 24 hours
-    '7d': 7,      // 1 week
-    '1m': 30,     // 1 month
-    '3m': 90,     // 3 months
-    '1y': 365,    // 1 year
-    'max': 'max' as any, // All available data
+  // IMPORTANT: Use unique decimal values to prevent cache collisions
+  const daysMap: Record<typeof chartPeriod, number | string> = {
+    '24h': 1,       // 24 hours
+    '7d': 7,        // 1 week  
+    '1m': 30,       // 1 month
+    '3m': 90,       // 3 months
+    '1y': 365,      // 1 year
+    'max': 'max',   // All available data
   }
 
+  // Get current days value
+  const currentDays = daysMap[chartPeriod] as number | 'max'
+
   // Get price history with transactions
+  // React Query will cache by { coinId, days } - when days changes, new query is made
   const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
-    { coinId, days: daysMap[chartPeriod] },
+    { coinId, days: currentDays },
     { 
-      enabled: !!coin,
-      staleTime: 0,
+      enabled: !!coin && !!currentDays,
     }
   )
-
-  // Invalidate and refetch when period changes
-  useEffect(() => {
-    if (!coin) return
-
-    const timer = setTimeout(() => {
-      // Invalidate the query cache to force refetch
-      utils.markets.getPriceHistory.invalidate({ coinId, days: daysMap[chartPeriod] })
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [chartPeriod, coinId, coin, utils, daysMap])
 
   // Debug logging
   console.log('💼 Holdings Query:', {
@@ -107,17 +99,18 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   // Force component re-render when period changes
   const chartKey = `${coinId}-${chartPeriod}-${chartType}`
   
-  console.log('📈 Price History:', {
+  console.log('📈 Price History Query:', {
     coinId,
     period: chartPeriod,
-    days: daysMap[chartPeriod],
+    currentDays,
     chartKey,
+    queryInput: { coinId, days: currentDays },
     priceHistory,
     pricesCount: priceHistory?.prices?.length || 0,
     transactionsCount: priceHistory?.transactions?.length || 0,
     loading: priceHistoryLoading,
     firstPrice: priceHistory?.prices?.[0],
-    lastPrice: priceHistory?.prices?.[priceHistory.prices.length - 1]
+    lastPrice: priceHistory?.prices?.[priceHistory?.prices?.length - 1]
   })
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
