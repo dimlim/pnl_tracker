@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { trpc } from '@/lib/trpc'
 import { TopGainersWidget } from '@/components/markets/top-gainers-widget'
 import { TopLosersWidget } from '@/components/markets/top-losers-widget'
+import { WatchlistWidget } from '@/components/markets/watchlist-widget'
 import { PercentBadge } from '@/components/markets/percent-badge'
 import { MiniSparkline } from '@/components/markets/mini-sparkline'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
@@ -135,6 +136,9 @@ export default function MarketsPage() {
           <span className="text-sm text-gray-600 dark:text-gray-400">Live updates</span>
         </div>
       </div>
+
+      {/* Watchlist Widget */}
+      <WatchlistWidget />
 
       {/* Widgets Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -278,10 +282,8 @@ export default function MarketsPage() {
 
                       {/* Name + Icon */}
                       <td className="py-4">
-                        <Link
-                          href={`/dashboard/assets/${coin.id}`}
-                          className="flex items-center gap-2 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group"
-                        >
+                        <div className="flex items-center gap-2">
+
                           {/* Real icon from API with fallback */}
                           {coin.iconUrl ? (
                             <img 
@@ -312,7 +314,7 @@ export default function MarketsPage() {
                               {coin.symbol}
                             </div>
                           </div>
-                        </Link>
+                        </div>
                       </td>
 
                       {/* Price */}
@@ -376,8 +378,13 @@ export default function MarketsPage() {
                               )}
                             />
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dashboard/assets/${coin.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            asChild
+                            title="Add transaction"
+                          >
+                            <Link href={`/dashboard/transactions?asset=${coin.id}`}>
                               <Plus className="w-4 h-4" />
                             </Link>
                           </Button>
