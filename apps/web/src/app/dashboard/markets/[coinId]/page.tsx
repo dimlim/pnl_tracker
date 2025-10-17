@@ -80,13 +80,13 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
 
   // Get price history with transactions
   // React Query will cache by { coinId, days } - when days changes, new query is made
-  // Use trpc.useContext() to access query client for manual control
-  const { data: priceHistory, isLoading: priceHistoryLoading, dataUpdatedAt } = trpc.markets.getPriceHistory.useQuery(
+  const { data: priceHistory, isLoading: priceHistoryLoading, dataUpdatedAt, isFetching } = trpc.markets.getPriceHistory.useQuery(
     { coinId, days: currentDays },
     { 
       enabled: !!coin && !!currentDays,
-      // Force refetch when period changes by using dataUpdatedAt
-      refetchOnMount: true,
+      staleTime: 60000, // Cache for 60 seconds to avoid rate limiting
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     }
   )
 
@@ -120,10 +120,12 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     chartKey,
     queryInput: { coinId, days: currentDays },
     dataUpdatedAt: new Date(dataUpdatedAt).toLocaleTimeString(),
+    isLoading: priceHistoryLoading,
+    isFetching,
+    hasCachedData: !!priceHistory,
     priceHistory,
     pricesCount: priceHistory?.prices?.length || 0,
     transactionsCount: priceHistory?.transactions?.length || 0,
-    loading: priceHistoryLoading,
     firstPrice: priceHistory?.prices?.[0],
     lastPrice: priceHistory?.prices?.[priceHistory?.prices?.length - 1]
   })
@@ -530,9 +532,12 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
           </div>
         </CardHeader>
         <CardContent>
-          {priceHistoryLoading ? (
+          {(priceHistoryLoading || isFetching) && !priceHistory ? (
             <div className="h-[300px] flex items-center justify-center">
-              <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+              <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+                <p className="text-sm text-gray-500">Loading {chartPeriod.toUpperCase()} data...</p>
+              </div>
             </div>
           ) : priceHistory && priceHistory.prices.length > 0 ? (
             <PriceChartWithTransactions
