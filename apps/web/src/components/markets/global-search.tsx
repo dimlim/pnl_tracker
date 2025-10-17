@@ -17,12 +17,22 @@ export function GlobalSearch() {
   const searchRef = useRef<HTMLDivElement>(null)
   const utils = trpc.useUtils()
 
-  const { data: results, isLoading } = trpc.markets.search.useQuery(
+  const { data: results, isLoading, error } = trpc.markets.search.useQuery(
     { query: debouncedQuery },
     {
       enabled: debouncedQuery.length > 0,
     }
   )
+
+  // Log search results
+  useEffect(() => {
+    if (results) {
+      console.log('🔍 Search results for', debouncedQuery, ':', results)
+    }
+    if (error) {
+      console.error('❌ Search error:', error)
+    }
+  }, [results, error, debouncedQuery])
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
     onSuccess: (data) => {
@@ -131,8 +141,18 @@ export function GlobalSearch() {
               ))}
             </div>
           ) : (
-            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-              No cryptocurrencies found
+            <div className="py-8 px-4 text-center">
+              <div className="text-gray-500 dark:text-gray-400 mb-2">
+                No cryptocurrencies found for "{query}"
+              </div>
+              <div className="text-xs text-gray-400 dark:text-gray-500">
+                Try searching by full name or different spelling
+              </div>
+              {error && (
+                <div className="mt-2 text-xs text-red-500">
+                  Error: {error.message}
+                </div>
+              )}
             </div>
           )}
         </div>
