@@ -117,16 +117,28 @@ export function PriceChartWithTransactions({
         <defs>
           <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
             <stop
-              offset="5%"
+              offset="0%"
               stopColor={isPositive ? '#10b981' : '#ef4444'}
-              stopOpacity={0.3}
+              stopOpacity={0.4}
             />
             <stop
-              offset="95%"
+              offset="50%"
+              stopColor={isPositive ? '#10b981' : '#ef4444'}
+              stopOpacity={0.2}
+            />
+            <stop
+              offset="100%"
               stopColor={isPositive ? '#10b981' : '#ef4444'}
               stopOpacity={0}
             />
           </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
         </defs>
 
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
@@ -229,9 +241,11 @@ export function PriceChartWithTransactions({
           type="monotone"
           dataKey="price"
           stroke={isPositive ? '#10b981' : '#ef4444'}
-          strokeWidth={2}
+          strokeWidth={3}
           fill="url(#colorPrice)"
-          animationDuration={300}
+          animationDuration={500}
+          dot={false}
+          activeDot={{ r: 6, strokeWidth: 2, fill: isPositive ? '#10b981' : '#ef4444' }}
         />
 
         {/* Transaction Markers */}

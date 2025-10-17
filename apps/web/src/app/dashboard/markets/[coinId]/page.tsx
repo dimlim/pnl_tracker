@@ -76,12 +76,14 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   }
 
   // Get price history with transactions
+  // Key includes chartPeriod to force refetch when period changes
   const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
     { coinId, days: daysMap[chartPeriod] },
     { 
       enabled: !!coin,
       refetchOnMount: false,
       refetchOnWindowFocus: false,
+      staleTime: 0, // Always fetch fresh data
     }
   )
 
