@@ -4,6 +4,10 @@ import type { Context } from '../context'
 import superjson from 'superjson'
 import { fetchCoinGeckoMarkets, searchCoinGecko, type MarketData } from '../services/coingecko'
 
+// Simple in-memory cache for price history to avoid rate limiting
+const priceHistoryCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_TTL = 60000 // 60 seconds
+
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
 })
@@ -695,11 +699,19 @@ export const marketsRouter = router({
           }
         }
 
+        // Check cache first
+        const cacheKey = `${coingeckoId}-${input.days}`
+        const cached = priceHistoryCache.get(cacheKey)
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+          console.log('✅ Using cached price history:', { cacheKey, age: Date.now() - cached.timestamp })
+          return cached.data
+        }
+
         try {
           // Use 'max' for days > 90 or if days is 'max' string
           const daysParam = input.days === 'max' || input.days > 90 ? 'max' : input.days
           const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${daysParam}`
-          console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, daysParam, url })
+          console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, daysParam, url, cacheKey })
           
           // Call CoinGecko market_chart API
           const response = await fetch(url)
@@ -748,7 +760,7 @@ export const marketsRouter = router({
             last: prices[prices.length - 1]
           })
 
-          return {
+          const result = {
             prices,
             transactions: (transactions || []).map(tx => ({
               timestamp: tx.timestamp,
@@ -758,6 +770,12 @@ export const marketsRouter = router({
               fee: Number(tx.fee || 0),
             })),
           }
+
+          // Cache the result
+          priceHistoryCache.set(cacheKey, { data: result, timestamp: Date.now() })
+          console.log('💾 Cached price history:', { cacheKey, pricesCount: prices.length })
+
+          return result
         } catch (error) {
           console.error('Failed to fetch CoinGecko data:', error)
           return {
