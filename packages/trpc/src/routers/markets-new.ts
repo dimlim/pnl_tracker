@@ -773,7 +773,8 @@ export const marketsRouter = router({
           }
 
           const data = await response.json() as { prices?: [number, number][] }
-          console.log('✅ CoinGecko response:', {
+          console.log('✅ CoinGecko SUCCESS:', {
+            status: response.status,
             pricesCount: data.prices?.length || 0,
             firstPrice: data.prices?.[0],
             lastPrice: data.prices?.[data.prices.length - 1]
@@ -788,7 +789,8 @@ export const marketsRouter = router({
           console.log('📊 Processed prices:', {
             count: prices.length,
             first: prices[0],
-            last: prices[prices.length - 1]
+            last: prices[prices.length - 1],
+            sample: prices.slice(0, 3)
           })
 
           const result = {
