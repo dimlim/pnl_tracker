@@ -703,19 +703,42 @@ export const marketsRouter = router({
         // Check cache first
         const cacheKey = `${coingeckoId}-${input.days}`
         const cached = priceHistoryCache.get(cacheKey)
-        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-          console.log('✅ Using cached price history:', { cacheKey, age: Date.now() - cached.timestamp })
+        const cacheAge = cached ? Date.now() - cached.timestamp : null
+        
+        if (cached && cacheAge && cacheAge < CACHE_TTL) {
+          console.log('💾 ========== USING CACHE ==========')
+          console.log('🔑 Cache key:', cacheKey)
+          console.log('⏰ Cache age:', Math.floor(cacheAge / 1000), 'seconds')
+          console.log('📊 Cached data points:', cached.data.prices?.length || 0)
+          console.log('====================================')
           return cached.data
+        }
+        
+        if (cached && cacheAge) {
+          console.log('🗑️ Cache expired:', { 
+            cacheKey, 
+            ageSeconds: Math.floor(cacheAge / 1000), 
+            ttlSeconds: CACHE_TTL / 1000 
+          })
         }
 
         try {
           // Use 'max' for days > 90 or if days is 'max' string
           const daysParam = input.days === 'max' || (typeof input.days === 'number' && input.days > 90) ? 'max' : input.days
           const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${daysParam}`
-          console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, daysParam, url, cacheKey })
+          
+          console.log('🌐 ========== COINGECKO API REQUEST ==========')
+          console.log('📍 URL:', url)
+          console.log('📊 Parameters:', { 
+            coingeckoId, 
+            requestedDays: input.days, 
+            apiDaysParam: daysParam,
+            cacheKey 
+          })
           
           // Call CoinGecko market_chart API with retry logic
           let response = await fetch(url)
+          console.log('📡 Response status:', response.status, response.statusText)
           
           // If rate limited, wait 2 seconds and retry once
           if (response.status === 429) {
@@ -792,28 +815,43 @@ export const marketsRouter = router({
             const last = prices[prices.length - 1]
             const rangeInMs = last.timestamp - first.timestamp
             const rangeInDays = rangeInMs / (1000 * 60 * 60 * 24)
+            const requestedDaysNum = typeof input.days === 'number' ? input.days : 365
             
-            console.log('📊 Processed prices:', {
-              count: prices.length,
-              first: { 
-                timestamp: first.timestamp, 
-                date: new Date(first.timestamp).toISOString(),
-                price: first.price 
-              },
-              last: { 
-                timestamp: last.timestamp, 
-                date: new Date(last.timestamp).toISOString(),
-                price: last.price 
-              },
-              rangeInMs,
-              rangeInDays: rangeInDays.toFixed(2),
-              requestedDays: input.days,
-              sample: prices.slice(0, 3).map(p => ({
-                timestamp: p.timestamp,
-                date: new Date(p.timestamp).toISOString(),
-                price: p.price
-              }))
+            console.log('📊 ========== PROCESSED DATA ==========')
+            console.log('📈 Data points:', prices.length)
+            console.log('📅 First point:', { 
+              timestamp: first.timestamp, 
+              date: new Date(first.timestamp).toISOString(),
+              price: first.price 
             })
+            console.log('📅 Last point:', { 
+              timestamp: last.timestamp, 
+              date: new Date(last.timestamp).toISOString(),
+              price: last.price 
+            })
+            console.log('⏱️ Time range:', {
+              milliseconds: rangeInMs,
+              hours: (rangeInMs / (1000 * 60 * 60)).toFixed(2),
+              days: rangeInDays.toFixed(2),
+              requestedDays: input.days
+            })
+            
+            // Check if data is sufficient
+            if (rangeInDays < requestedDaysNum * 0.8) {
+              console.warn('⚠️ WARNING: Insufficient data range!')
+              console.warn(`Expected ~${requestedDaysNum} days, but got only ${rangeInDays.toFixed(2)} days`)
+              console.warn('This might be due to:')
+              console.warn('  1. CoinGecko API limitations')
+              console.warn('  2. Coin has limited price history')
+              console.warn('  3. Rate limiting issues')
+            }
+            
+            console.log('📋 Sample data (first 3 points):', prices.slice(0, 3).map(p => ({
+              timestamp: p.timestamp,
+              date: new Date(p.timestamp).toISOString(),
+              price: p.price
+            })))
+            console.log('==========================================')
           }
 
           const result = {

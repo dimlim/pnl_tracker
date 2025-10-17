@@ -32,6 +32,33 @@ export function PriceChartWrapper({ coinId, days, period, coin, holdings }: Pric
     pricesCount: priceHistory?.prices?.length || 0,
   })
 
+  // DETAILED LOGGING for debugging
+  if (priceHistory?.prices && priceHistory.prices.length > 0) {
+    const first = priceHistory.prices[0]
+    const last = priceHistory.prices[priceHistory.prices.length - 1]
+    const rangeInMs = last.timestamp - first.timestamp
+    const rangeInDays = rangeInMs / (1000 * 60 * 60 * 24)
+    
+    console.log('🔍 WRAPPER DATA ANALYSIS:', {
+      period,
+      requestedDays: days,
+      actualDataPoints: priceHistory.prices.length,
+      firstPoint: {
+        timestamp: first.timestamp,
+        date: new Date(first.timestamp).toISOString(),
+        price: first.price
+      },
+      lastPoint: {
+        timestamp: last.timestamp,
+        date: new Date(last.timestamp).toISOString(),
+        price: last.price
+      },
+      dataRangeInDays: rangeInDays.toFixed(2),
+      dataRangeInHours: (rangeInMs / (1000 * 60 * 60)).toFixed(2),
+      isDataSufficient: rangeInDays >= (typeof days === 'number' ? days * 0.8 : 1)
+    })
+  }
+
   if (isLoading) {
     return (
       <div className="h-[300px] flex items-center justify-center">
