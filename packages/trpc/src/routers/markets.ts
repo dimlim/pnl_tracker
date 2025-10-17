@@ -343,31 +343,60 @@ export const marketsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      // Check if already in watchlist
-      const { data: existing } = await ctx.supabase
-        .from('watchlist')
-        .select('*')
-        .eq('user_id', ctx.user.id)
-        .eq('asset_id', input.assetId)
-        .single()
+      try {
+        console.log('🔄 Toggle watchlist for:', input.assetId, 'user:', ctx.user.id)
 
-      if (existing) {
-        // Remove from watchlist
-        await ctx.supabase
+        // Check if already in watchlist
+        const { data: existing, error: selectError } = await ctx.supabase
           .from('watchlist')
-          .delete()
+          .select('*')
           .eq('user_id', ctx.user.id)
           .eq('asset_id', input.assetId)
+          .single()
 
-        return { added: false }
-      } else {
-        // Add to watchlist
-        await ctx.supabase.from('watchlist').insert({
-          user_id: ctx.user.id,
-          asset_id: input.assetId,
-        })
+        if (selectError && selectError.code !== 'PGRST116') {
+          // PGRST116 = not found, which is ok
+          console.error('❌ Error checking watchlist:', selectError)
+          throw new Error('Failed to check watchlist')
+        }
 
-        return { added: true }
+        if (existing) {
+          // Remove from watchlist
+          console.log('➖ Removing from watchlist')
+          const { error: deleteError } = await ctx.supabase
+            .from('watchlist')
+            .delete()
+            .eq('user_id', ctx.user.id)
+            .eq('asset_id', input.assetId)
+
+          if (deleteError) {
+            console.error('❌ Error removing from watchlist:', deleteError)
+            throw new Error('Failed to remove from watchlist')
+          }
+
+          console.log('✅ Removed from watchlist')
+          return { added: false }
+        } else {
+          // Add to watchlist
+          console.log('➕ Adding to watchlist')
+          const { error: insertError } = await ctx.supabase
+            .from('watchlist')
+            .insert({
+              user_id: ctx.user.id,
+              asset_id: input.assetId,
+            })
+
+          if (insertError) {
+            console.error('❌ Error adding to watchlist:', insertError)
+            throw new Error('Failed to add to watchlist')
+          }
+
+          console.log('✅ Added to watchlist')
+          return { added: true }
+        }
+      } catch (error) {
+        console.error('❌ Toggle watchlist error:', error)
+        throw error
       }
     }),
 
