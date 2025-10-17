@@ -541,27 +541,32 @@ export const marketsRouter = router({
 
         // Get all positions for this asset across all portfolios
         const { data: positions } = await ctx.supabase
-          .from('positions')
+          .from('portfolio_positions')
           .select(`
-            quantity,
-            avg_buy_price,
-            total_invested,
+            quantity_total,
+            avg_entry_price,
             portfolios (
               id,
-              name
+              name,
+              user_id
             )
           `)
           .eq('asset_id', asset.id)
-          .eq('user_id', ctx.user.id)
-          .gt('quantity', 0)
+          .gt('quantity_total', 0)
 
         if (!positions || positions.length === 0) {
           return null
         }
 
-        // Calculate total holdings across all portfolios
-        const totalQuantity = positions.reduce((sum, p) => sum + Number(p.quantity), 0)
-        const totalInvested = positions.reduce((sum, p) => sum + Number(p.total_invested), 0)
+        // Filter positions by user_id and calculate total holdings
+        const userPositions = positions.filter((p: any) => p.portfolios.user_id === ctx.user.id)
+        
+        if (userPositions.length === 0) {
+          return null
+        }
+
+        const totalQuantity = userPositions.reduce((sum, p: any) => sum + Number(p.quantity_total), 0)
+        const totalInvested = userPositions.reduce((sum, p: any) => sum + (Number(p.quantity_total) * Number(p.avg_entry_price)), 0)
         const avgBuyPrice = totalInvested / totalQuantity
 
         return {
@@ -571,12 +576,12 @@ export const marketsRouter = router({
           totalQuantity,
           avgBuyPrice,
           totalInvested,
-          portfolios: positions.map((p: any) => ({
+          portfolios: userPositions.map((p: any) => ({
             id: p.portfolios.id,
             name: p.portfolios.name,
-            quantity: Number(p.quantity),
-            avgBuyPrice: Number(p.avg_buy_price),
-            totalInvested: Number(p.total_invested),
+            quantity: Number(p.quantity_total),
+            avgBuyPrice: Number(p.avg_entry_price),
+            totalInvested: Number(p.quantity_total) * Number(p.avg_entry_price),
           })),
         }
       } catch (error) {
