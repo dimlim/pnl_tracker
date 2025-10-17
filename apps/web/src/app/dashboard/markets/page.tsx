@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Search, Star, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Star, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import Link from 'next/link'
 import { trpc } from '@/lib/trpc'
 import { TopGainersWidget } from '@/components/markets/top-gainers-widget'
@@ -15,7 +14,6 @@ import { PercentBadge } from '@/components/markets/percent-badge'
 import { MiniSparkline } from '@/components/markets/mini-sparkline'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
 import { GlobalSearch } from '@/components/markets/global-search'
-import { useDebounce } from '@/hooks/use-debounce'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -60,8 +58,6 @@ export default function MarketsPage() {
   const [filter, setFilter] = useState<'all' | 'watchlist' | 'holdings'>('all')
   const [sortField, setSortField] = useState<SortField>('market_cap')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
-  const [searchQuery, setSearchQuery] = useState('')
-  const debouncedSearch = useDebounce(searchQuery, 300)
 
   const utils = trpc.useUtils()
 
@@ -96,7 +92,6 @@ export default function MarketsPage() {
     {
       filter,
       sortBy,
-      search: debouncedSearch,
       page: 1,
       perPage: 100,
     },
@@ -159,19 +154,8 @@ export default function MarketsPage() {
               </div>
             </div>
 
-            {/* Filters and Table Search */}
+            {/* Filters */}
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              {/* Table Filter Search */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Filter table..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
               {/* Filter Tabs */}
               <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
                 <TabsList>
