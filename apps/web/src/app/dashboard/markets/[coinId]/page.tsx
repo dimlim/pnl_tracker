@@ -95,10 +95,14 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     coinSymbol: coin?.symbol
   })
 
+  // Force component re-render when period changes
+  const chartKey = `${coinId}-${chartPeriod}-${chartType}`
+  
   console.log('📈 Price History:', {
     coinId,
     period: chartPeriod,
     days: daysMap[chartPeriod],
+    chartKey,
     priceHistory,
     pricesCount: priceHistory?.prices?.length || 0,
     transactionsCount: priceHistory?.transactions?.length || 0,
@@ -515,6 +519,7 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
             </div>
           ) : priceHistory && priceHistory.prices.length > 0 ? (
             <PriceChartWithTransactions
+              key={chartKey}
               priceData={priceHistory.prices}
               transactions={priceHistory.transactions}
               avgBuyPrice={holdings?.avgBuyPrice}
@@ -523,6 +528,7 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
             />
           ) : coin.sparkline7d && coin.sparkline7d.length > 0 ? (
             <PriceChartWithTransactions
+              key={chartKey}
               sparkline={coin.sparkline7d}
               transactions={priceHistory?.transactions || []}
               avgBuyPrice={holdings?.avgBuyPrice}
