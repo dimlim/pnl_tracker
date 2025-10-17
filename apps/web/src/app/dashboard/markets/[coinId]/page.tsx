@@ -75,27 +75,25 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   }
 
   // Get price history with transactions
-  // Key includes chartPeriod to force refetch when period changes
-  const { data: priceHistory, isLoading: priceHistoryLoading, refetch } = trpc.markets.getPriceHistory.useQuery(
+  const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
     { coinId, days: daysMap[chartPeriod] },
     { 
       enabled: !!coin,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-      staleTime: 0, // Always fetch fresh data
+      staleTime: 0,
     }
   )
 
-  // Refetch when period changes (with debounce to avoid rate limiting)
+  // Invalidate and refetch when period changes
   useEffect(() => {
     if (!coin) return
 
     const timer = setTimeout(() => {
-      refetch()
-    }, 300) // Wait 300ms before refetching
+      // Invalidate the query cache to force refetch
+      utils.markets.getPriceHistory.invalidate({ coinId, days: daysMap[chartPeriod] })
+    }, 300)
 
     return () => clearTimeout(timer)
-  }, [chartPeriod, coin, refetch])
+  }, [chartPeriod, coinId, coin, utils, daysMap])
 
   // Debug logging
   console.log('💼 Holdings Query:', {
