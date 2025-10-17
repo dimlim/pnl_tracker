@@ -59,7 +59,9 @@ export async function fetchCoinCapHistory(
 
     // Calculate start and end timestamps
     const end = Date.now()
-    let start = end - (typeof days === 'number' ? days * 24 * 60 * 60 * 1000 : 365 * 24 * 60 * 60 * 1000)
+    // For 'max', use 5 years of data (CoinCap supports up to 5 years)
+    const maxDays = 365 * 5 // 5 years
+    let start = end - (typeof days === 'number' ? days * 24 * 60 * 60 * 1000 : maxDays * 24 * 60 * 60 * 1000)
 
     const url = `https://api.coincap.io/v2/assets/${coincapId}/history?interval=${interval}&start=${start}&end=${end}`
     
