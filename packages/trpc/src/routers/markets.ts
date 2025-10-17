@@ -4,6 +4,7 @@ import type { Context } from '../context'
 import superjson from 'superjson'
 import { fetchCoinGeckoMarkets, searchCoinGecko, type MarketData } from '../services/coingecko'
 import { fetchCoinCapHistory } from '../services/coincap'
+import { fetchCoinMarketCapHistory } from '../services/coinmarketcap'
 
 // Simple in-memory cache for price history to avoid rate limiting
 const priceHistoryCache = new Map<string, { data: any; timestamp: number }>()
@@ -732,10 +733,33 @@ export const marketsRouter = router({
               error: errorText
             })
 
-            // If rate limited (429), try CoinCap as fallback
+            // If rate limited (429), try CoinMarketCap first, then CoinCap
             if (response.status === 429) {
-              console.warn('⚠️ CoinGecko rate limited! Trying CoinCap fallback...')
+              console.warn('⚠️ CoinGecko rate limited! Trying CoinMarketCap fallback...')
               
+              // Try CoinMarketCap first
+              const cmcPrices = await fetchCoinMarketCapHistory(input.coinId, input.days)
+              
+              if (cmcPrices.length > 0) {
+                console.log('✅ CoinMarketCap fallback successful:', { pricesCount: cmcPrices.length })
+                
+                const result = {
+                  prices: cmcPrices,
+                  transactions: (transactions || []).map(tx => ({
+                    timestamp: tx.timestamp,
+                    type: tx.type,
+                    quantity: Number(tx.quantity),
+                    price: Number(tx.price),
+                    fee: Number(tx.fee || 0),
+                  })),
+                }
+
+                // Cache the CoinMarketCap result
+                priceHistoryCache.set(cacheKey, { data: result, timestamp: Date.now() })
+                return result
+              }
+              
+              console.warn('⚠️ CoinMarketCap also failed, trying CoinCap...')
               const coincapPrices = await fetchCoinCapHistory(input.coinId, input.days)
               
               if (coincapPrices.length > 0) {

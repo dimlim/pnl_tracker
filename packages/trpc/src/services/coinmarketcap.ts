@@ -36,7 +36,6 @@ interface CMCQuote {
 
 /**
  * Fetch historical price data from CoinMarketCap API
- * Note: Free tier has limited historical data access
  */
 export async function fetchCoinMarketCapHistory(
   coinId: string,
@@ -50,23 +49,19 @@ export async function fetchCoinMarketCapHistory(
       return []
     }
 
-    // CoinMarketCap free tier doesn't support historical data well
-    // We'll use their quotes/latest endpoint and generate synthetic history
-    // For production, you'd need a paid plan or use their historical endpoints
+    const apiKey = process.env.COINMARKETCAP_API_KEY || '640c8b9a-56da-49f4-965c-961037e98d09'
     
-    // For now, return empty to fallback to CoinCap
-    console.log('⚠️ CoinMarketCap historical data requires paid plan')
-    return []
+    console.log('🔍 Fetching CoinMarketCap data:', { symbol, days })
 
-    // Uncomment below if you have CMC API key:
-    /*
-    const apiKey = process.env.COINMARKETCAP_API_KEY
-    if (!apiKey) {
-      console.warn('⚠️ CoinMarketCap API key not found')
-      return []
-    }
-
-    const url = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/historical`
+    // CoinMarketCap uses different endpoints
+    // For historical data, we need to use OHLCV endpoint
+    // Calculate time range
+    const now = Date.now()
+    const daysNum = typeof days === 'number' ? days : 365
+    const start = new Date(now - daysNum * 24 * 60 * 60 * 1000)
+    
+    // Use OHLCV historical endpoint (requires Basic plan or higher)
+    const url = `https://pro-api.coinmarketcap.com/v1/cryptocurrency/ohlcv/historical?symbol=${symbol}&time_start=${start.toISOString()}&time_end=${new Date(now).toISOString()}&interval=daily`
     
     const response = await fetch(url, {
       headers: {
@@ -76,14 +71,35 @@ export async function fetchCoinMarketCapHistory(
     })
 
     if (!response.ok) {
-      console.error('❌ CoinMarketCap API error:', response.status)
+      const errorText = await response.text()
+      console.error('❌ CoinMarketCap API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      })
       return []
     }
 
-    const data = await response.json()
-    // Process data...
-    return []
-    */
+    const data = await response.json() as any
+    
+    if (!data.data || !data.data.quotes) {
+      console.warn('⚠️ CoinMarketCap returned no data')
+      return []
+    }
+
+    // Transform CMC format to our format
+    const prices = data.data.quotes.map((quote: any) => ({
+      timestamp: new Date(quote.time_open).getTime(),
+      price: quote.quote.USD.close,
+    }))
+
+    console.log('✅ CoinMarketCap response:', {
+      pricesCount: prices.length,
+      first: prices[0],
+      last: prices[prices.length - 1]
+    })
+
+    return prices
   } catch (error) {
     console.error('Failed to fetch CoinMarketCap data:', error)
     return []
