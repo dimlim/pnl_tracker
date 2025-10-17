@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { Search, Star, Loader2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -102,17 +103,19 @@ export function GlobalSearch() {
                 Found {results.length} results
               </div>
               {results.map((coin: any) => (
-                <div
+                <Link
                   key={coin.id}
-                  className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                  href={`/dashboard/assets/${coin.id}`}
+                  className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+                  onClick={() => setIsOpen(false)}
                 >
-                  <div className="flex items-center gap-3 flex-1">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
                     {/* Icon with fallback */}
                     {coin.iconUrl ? (
                       <img 
                         src={coin.iconUrl} 
                         alt={coin.symbol}
-                        className="w-8 h-8 rounded-full"
+                        className="w-8 h-8 rounded-full flex-shrink-0"
                         onError={(e) => {
                           // Fallback to CryptoIcon if image fails
                           e.currentTarget.style.display = 'none'
@@ -121,12 +124,14 @@ export function GlobalSearch() {
                         }}
                       />
                     ) : null}
-                    <div style={{ display: coin.iconUrl ? 'none' : 'block' }}>
+                    <div style={{ display: coin.iconUrl ? 'none' : 'block' }} className="flex-shrink-0">
                       <CryptoIcon symbol={coin.symbol} size={32} />
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{coin.name}</div>
+                      <div className="font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                        {coin.name}
+                      </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <span className="font-mono">{coin.symbol}</span>
                         {coin.rank !== 999999 && (
@@ -139,8 +144,13 @@ export function GlobalSearch() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => toggleWatchlist.mutate({ assetId: coin.id })}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleWatchlist.mutate({ assetId: coin.id })
+                    }}
                     disabled={toggleWatchlist.isPending}
+                    className="flex-shrink-0"
                   >
                     <Star
                       className={cn(
@@ -150,7 +160,7 @@ export function GlobalSearch() {
                       )}
                     />
                   </Button>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
