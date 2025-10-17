@@ -710,12 +710,19 @@ export const marketsRouter = router({
 
         try {
           // Use 'max' for days > 90 or if days is 'max' string
-          const daysParam = input.days === 'max' || input.days > 90 ? 'max' : input.days
+          const daysParam = input.days === 'max' || (typeof input.days === 'number' && input.days > 90) ? 'max' : input.days
           const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${daysParam}`
           console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, daysParam, url, cacheKey })
           
-          // Call CoinGecko market_chart API
-          const response = await fetch(url)
+          // Call CoinGecko market_chart API with retry logic
+          let response = await fetch(url)
+          
+          // If rate limited, wait 2 seconds and retry once
+          if (response.status === 429) {
+            console.warn('⚠️ Rate limited, waiting 2s and retrying...')
+            await new Promise(resolve => setTimeout(resolve, 2000))
+            response = await fetch(url)
+          }
 
           if (!response.ok) {
             const errorText = await response.text()
