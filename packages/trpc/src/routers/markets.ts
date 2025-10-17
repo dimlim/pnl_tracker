@@ -3,6 +3,7 @@ import { initTRPC, TRPCError } from '@trpc/server'
 import type { Context } from '../context'
 import superjson from 'superjson'
 import { fetchCoinGeckoMarkets, searchCoinGecko, type MarketData } from '../services/coingecko'
+import { fetchCoinCapHistory } from '../services/coincap'
 
 // Simple in-memory cache for price history to avoid rate limiting
 const priceHistoryCache = new Map<string, { data: any; timestamp: number }>()
@@ -724,9 +725,32 @@ export const marketsRouter = router({
               error: errorText
             })
 
-            // If rate limited (429), use sparkline as fallback
+            // If rate limited (429), try CoinCap as fallback
             if (response.status === 429) {
-              console.warn('⚠️ Rate limited! Using sparkline fallback')
+              console.warn('⚠️ CoinGecko rate limited! Trying CoinCap fallback...')
+              
+              const coincapPrices = await fetchCoinCapHistory(input.coinId, input.days)
+              
+              if (coincapPrices.length > 0) {
+                console.log('✅ CoinCap fallback successful:', { pricesCount: coincapPrices.length })
+                
+                const result = {
+                  prices: coincapPrices,
+                  transactions: (transactions || []).map(tx => ({
+                    timestamp: tx.timestamp,
+                    type: tx.type,
+                    quantity: Number(tx.quantity),
+                    price: Number(tx.price),
+                    fee: Number(tx.fee || 0),
+                  })),
+                }
+
+                // Cache the CoinCap result
+                priceHistoryCache.set(cacheKey, { data: result, timestamp: Date.now() })
+                return result
+              }
+              
+              console.error('❌ CoinCap fallback also failed')
             }
 
             return {
