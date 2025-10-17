@@ -24,7 +24,7 @@ import { trpc } from '@/lib/trpc'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { PriceChartWithTransactions } from '@/components/charts/price-chart-with-transactions'
+import { PriceChartWrapper } from '@/components/charts/price-chart-wrapper'
 
 function formatPrice(price: number): string {
   if (price < 0.01) return `$${price.toFixed(6)}`
@@ -78,28 +78,6 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   // Get current days value
   const currentDays = daysMap[chartPeriod] as number | 'max'
 
-  // Get price history with transactions
-  // React Query will cache by { coinId, days } - when days changes, new query is made
-  const { data: priceHistory, isLoading: priceHistoryLoading, dataUpdatedAt, isFetching } = trpc.markets.getPriceHistory.useQuery(
-    { coinId, days: currentDays },
-    { 
-      enabled: !!coin && !!currentDays,
-      staleTime: 60000, // Cache for 60 seconds to avoid rate limiting
-      refetchOnWindowFocus: false,
-      refetchOnReconnect: false,
-    }
-  )
-
-  // Track when period changes to force component update
-  const [lastPeriod, setLastPeriod] = useState(chartPeriod)
-  
-  useEffect(() => {
-    if (lastPeriod !== chartPeriod) {
-      setLastPeriod(chartPeriod)
-      // Force re-render by updating state
-    }
-  }, [chartPeriod, lastPeriod])
-
   // Debug logging
   console.log('💼 Holdings Query:', {
     coinId,
@@ -109,25 +87,11 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     coinSymbol: coin?.symbol
   })
 
-  // Force component re-render when period changes
-  const chartKey = `${coinId}-${chartPeriod}-${chartType}`
-  
-  console.log('📈 Price History Query:', {
+  console.log('📊 Main Component:', {
     coinId,
     period: chartPeriod,
-    lastPeriod,
     currentDays,
-    chartKey,
-    queryInput: { coinId, days: currentDays },
-    dataUpdatedAt: new Date(dataUpdatedAt).toLocaleTimeString(),
-    isLoading: priceHistoryLoading,
-    isFetching,
-    hasCachedData: !!priceHistory,
-    priceHistory,
-    pricesCount: priceHistory?.prices?.length || 0,
-    transactionsCount: priceHistory?.transactions?.length || 0,
-    firstPrice: priceHistory?.prices?.[0],
-    lastPrice: priceHistory?.prices?.[priceHistory?.prices?.length - 1]
+    chartType,
   })
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
@@ -532,36 +496,14 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
           </div>
         </CardHeader>
         <CardContent>
-          {(priceHistoryLoading || isFetching) && !priceHistory ? (
-            <div className="h-[300px] flex items-center justify-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
-                <p className="text-sm text-gray-500">Loading {chartPeriod.toUpperCase()} data...</p>
-              </div>
-            </div>
-          ) : priceHistory && priceHistory.prices.length > 0 ? (
-            <PriceChartWithTransactions
-              key={chartKey}
-              priceData={priceHistory.prices}
-              transactions={priceHistory.transactions}
-              avgBuyPrice={holdings?.avgBuyPrice}
-              symbol={coin.symbol}
-              currentPrice={coin.currentPrice}
-            />
-          ) : coin.sparkline7d && coin.sparkline7d.length > 0 ? (
-            <PriceChartWithTransactions
-              key={chartKey}
-              sparkline={coin.sparkline7d}
-              transactions={priceHistory?.transactions || []}
-              avgBuyPrice={holdings?.avgBuyPrice}
-              symbol={coin.symbol}
-              currentPrice={coin.currentPrice}
-            />
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-500 dark:text-gray-400">
-              Chart data not available
-            </div>
-          )}
+          <PriceChartWrapper
+            key={`${coinId}-${chartPeriod}`}
+            coinId={coinId}
+            days={currentDays}
+            period={chartPeriod}
+            coin={coin}
+            holdings={holdings}
+          />
         </CardContent>
       </Card>
 
