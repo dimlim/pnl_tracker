@@ -634,7 +634,7 @@ export const marketsRouter = router({
     .input(
       z.object({
         coinId: z.string(),
-        days: z.number().default(7), // 1, 7, 30, 90, 365
+        days: z.union([z.number(), z.literal('max')]).default(7), // 1, 7, 30, 90, 365, 'max'
       })
     )
     .query(async ({ input, ctx }) => {
@@ -696,8 +696,8 @@ export const marketsRouter = router({
         }
 
         try {
-          // Use 'max' for days > 90 to get daily data, otherwise use exact days
-          const daysParam = input.days > 90 ? 'max' : input.days
+          // Use 'max' for days > 90 or if days is 'max' string
+          const daysParam = input.days === 'max' || input.days > 90 ? 'max' : input.days
           const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${daysParam}`
           console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, daysParam, url })
           
