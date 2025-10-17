@@ -62,9 +62,18 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     { enabled: !!coin }
   )
 
+  // Map chart period to days
+  const daysMap = {
+    '24h': 1,
+    '7d': 7,
+    '30d': 30,
+    '90d': 90,
+    '1y': 365,
+  }
+
   // Get price history with transactions
-  const { data: priceHistory } = trpc.markets.getPriceHistory.useQuery(
-    { coinId, days: 7 },
+  const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
+    { coinId, days: daysMap[chartPeriod] },
     { enabled: !!coin }
   )
 
@@ -443,7 +452,19 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
           </div>
         </CardHeader>
         <CardContent>
-          {coin.sparkline7d && coin.sparkline7d.length > 0 ? (
+          {priceHistoryLoading ? (
+            <div className="h-[300px] flex items-center justify-center">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full" />
+            </div>
+          ) : priceHistory && priceHistory.prices.length > 0 ? (
+            <PriceChartWithTransactions
+              priceData={priceHistory.prices}
+              transactions={priceHistory.transactions}
+              avgBuyPrice={holdings?.avgBuyPrice}
+              symbol={coin.symbol}
+              currentPrice={coin.currentPrice}
+            />
+          ) : coin.sparkline7d && coin.sparkline7d.length > 0 ? (
             <PriceChartWithTransactions
               sparkline={coin.sparkline7d}
               transactions={priceHistory?.transactions || []}
@@ -452,7 +473,7 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
               currentPrice={coin.currentPrice}
             />
           ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <div className="h-[300px] flex items-center justify-center text-gray-500 dark:text-gray-400">
               Chart data not available
             </div>
           )}

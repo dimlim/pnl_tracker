@@ -25,8 +25,14 @@ interface Transaction {
   fee: number
 }
 
+interface PriceData {
+  timestamp: number
+  price: number
+}
+
 interface PriceChartWithTransactionsProps {
-  sparkline: number[]
+  sparkline?: number[]
+  priceData?: PriceData[]
   transactions: Transaction[]
   avgBuyPrice?: number
   symbol: string
@@ -35,12 +41,18 @@ interface PriceChartWithTransactionsProps {
 
 export function PriceChartWithTransactions({
   sparkline,
+  priceData,
   transactions,
   avgBuyPrice,
   symbol,
   currentPrice,
 }: PriceChartWithTransactionsProps) {
   const chartData = useMemo(() => {
+    // Use priceData if available, otherwise use sparkline
+    if (priceData && priceData.length > 0) {
+      return priceData
+    }
+
     if (!sparkline || sparkline.length === 0) return []
 
     // Create data points from sparkline (7 days = 168 hours)
@@ -52,7 +64,7 @@ export function PriceChartWithTransactions({
       timestamp: startTime + (index * hourInMs),
       price,
     }))
-  }, [sparkline])
+  }, [sparkline, priceData])
 
   const transactionMarkers = useMemo(() => {
     if (!transactions || transactions.length === 0) return []

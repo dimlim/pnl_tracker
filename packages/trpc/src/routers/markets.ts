@@ -681,18 +681,70 @@ export const marketsRouter = router({
           .order('timestamp', { ascending: true })
 
         // Get historical prices from CoinGecko
-        // For now, return empty array - will be filled by frontend from sparkline
-        // In future, can call CoinGecko API here
-        
-        return {
-          prices: [], // Will use sparkline from markets data
-          transactions: (transactions || []).map(tx => ({
-            timestamp: tx.timestamp,
-            type: tx.type,
-            quantity: Number(tx.quantity),
-            price: Number(tx.price),
-            fee: Number(tx.fee || 0),
-          })),
+        const coingeckoId = asset.coingecko_id
+        if (!coingeckoId) {
+          return {
+            prices: [],
+            transactions: (transactions || []).map(tx => ({
+              timestamp: tx.timestamp,
+              type: tx.type,
+              quantity: Number(tx.quantity),
+              price: Number(tx.price),
+              fee: Number(tx.fee || 0),
+            })),
+          }
+        }
+
+        try {
+          // Call CoinGecko market_chart API
+          const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${input.days}&interval=${input.days === 1 ? 'hourly' : 'daily'}`
+          )
+
+          if (!response.ok) {
+            console.error('CoinGecko API error:', response.status)
+            return {
+              prices: [],
+              transactions: (transactions || []).map(tx => ({
+                timestamp: tx.timestamp,
+                type: tx.type,
+                quantity: Number(tx.quantity),
+                price: Number(tx.price),
+                fee: Number(tx.fee || 0),
+              })),
+            }
+          }
+
+          const data = await response.json() as { prices?: [number, number][] }
+          
+          // CoinGecko returns: { prices: [[timestamp, price], ...] }
+          const prices = (data.prices || []).map(([timestamp, price]) => ({
+            timestamp,
+            price,
+          }))
+
+          return {
+            prices,
+            transactions: (transactions || []).map(tx => ({
+              timestamp: tx.timestamp,
+              type: tx.type,
+              quantity: Number(tx.quantity),
+              price: Number(tx.price),
+              fee: Number(tx.fee || 0),
+            })),
+          }
+        } catch (error) {
+          console.error('Failed to fetch CoinGecko data:', error)
+          return {
+            prices: [],
+            transactions: (transactions || []).map(tx => ({
+              timestamp: tx.timestamp,
+              type: tx.type,
+              quantity: Number(tx.quantity),
+              price: Number(tx.price),
+              fee: Number(tx.fee || 0),
+            })),
+          }
         }
       } catch (error) {
         console.error('Failed to get price history:', error)
