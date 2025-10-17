@@ -4,7 +4,6 @@ import type { Context } from '../context'
 import superjson from 'superjson'
 import { fetchCoinGeckoMarkets, searchCoinGecko, type MarketData } from '../services/coingecko'
 import { fetchCoinCapHistory } from '../services/coincap'
-import { fetchBinanceHistory, isBinanceCoin } from '../services/binance'
 
 // Simple in-memory cache for price history to avoid rate limiting
 const priceHistoryCache = new Map<string, { data: any; timestamp: number }>()
@@ -707,34 +706,6 @@ export const marketsRouter = router({
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
           console.log('✅ Using cached price history:', { cacheKey, age: Date.now() - cached.timestamp })
           return cached.data
-        }
-
-        // Try Binance first (FREE, UNLIMITED, RELIABLE)
-        if (isBinanceCoin(input.coinId)) {
-          console.log('🚀 Trying Binance API first (unlimited & free)...')
-          
-          const binancePrices = await fetchBinanceHistory(input.coinId, input.days)
-          
-          if (binancePrices.length > 0) {
-            console.log('✅ Binance success:', { pricesCount: binancePrices.length })
-            
-            const result = {
-              prices: binancePrices,
-              transactions: (transactions || []).map(tx => ({
-                timestamp: tx.timestamp,
-                type: tx.type,
-                quantity: Number(tx.quantity),
-                price: Number(tx.price),
-                fee: Number(tx.fee || 0),
-              })),
-            }
-
-            // Cache the Binance result
-            priceHistoryCache.set(cacheKey, { data: result, timestamp: Date.now() })
-            return result
-          }
-          
-          console.warn('⚠️ Binance failed, falling back to CoinGecko...')
         }
 
         try {
