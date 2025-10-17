@@ -42,7 +42,7 @@ function formatMarketCap(value: number): string {
 
 export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: string }> }) {
   const { coinId } = use(params)
-  const [chartPeriod, setChartPeriod] = useState<'5m' | '15m' | '1h' | '4h' | '1d' | '7d' | '30d' | '90d' | '1y'>('7d')
+  const [chartPeriod, setChartPeriod] = useState<'1d' | '7d' | '14d' | '30d' | '90d' | '180d' | '1y'>('7d')
 
   const utils = trpc.useUtils()
 
@@ -64,15 +64,13 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
 
   // Map chart period to days for CoinGecko API
   const daysMap: Record<typeof chartPeriod, number> = {
-    '5m': 0.003472, // ~5 minutes in days
-    '15m': 0.010417, // ~15 minutes
-    '1h': 0.041667, // 1 hour
-    '4h': 0.166667, // 4 hours
-    '1d': 1,
-    '7d': 7,
-    '30d': 30,
-    '90d': 90,
-    '1y': 365,
+    '1d': 1,      // 24 hours
+    '7d': 7,      // 1 week
+    '14d': 14,    // 2 weeks
+    '30d': 30,    // 1 month
+    '90d': 90,    // 3 months
+    '180d': 180,  // 6 months
+    '1y': 365,    // 1 year
   }
 
   // Get price history with transactions
@@ -460,7 +458,7 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
           <div className="flex items-center justify-between">
             <CardTitle>Price Chart</CardTitle>
             <div className="flex gap-2 flex-wrap">
-              {(['5m', '15m', '1h', '4h', '1d', '7d', '30d', '90d', '1y'] as const).map((period) => (
+              {(['1d', '7d', '14d', '30d', '90d', '180d', '1y'] as const).map((period) => (
                 <Button
                   key={period}
                   variant={chartPeriod === period ? 'default' : 'outline'}
