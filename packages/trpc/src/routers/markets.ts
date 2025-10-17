@@ -696,13 +696,19 @@ export const marketsRouter = router({
         }
 
         try {
+          const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${input.days}&interval=${input.days === 1 ? 'hourly' : 'daily'}`
+          console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, url })
+          
           // Call CoinGecko market_chart API
-          const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${input.days}&interval=${input.days === 1 ? 'hourly' : 'daily'}`
-          )
+          const response = await fetch(url)
 
           if (!response.ok) {
-            console.error('CoinGecko API error:', response.status)
+            const errorText = await response.text()
+            console.error('❌ CoinGecko API error:', {
+              status: response.status,
+              statusText: response.statusText,
+              error: errorText
+            })
             return {
               prices: [],
               transactions: (transactions || []).map(tx => ({
@@ -716,12 +722,23 @@ export const marketsRouter = router({
           }
 
           const data = await response.json() as { prices?: [number, number][] }
+          console.log('✅ CoinGecko response:', {
+            pricesCount: data.prices?.length || 0,
+            firstPrice: data.prices?.[0],
+            lastPrice: data.prices?.[data.prices.length - 1]
+          })
           
           // CoinGecko returns: { prices: [[timestamp, price], ...] }
           const prices = (data.prices || []).map(([timestamp, price]) => ({
             timestamp,
             price,
           }))
+
+          console.log('📊 Processed prices:', {
+            count: prices.length,
+            first: prices[0],
+            last: prices[prices.length - 1]
+          })
 
           return {
             prices,

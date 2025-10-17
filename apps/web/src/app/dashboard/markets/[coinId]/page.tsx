@@ -86,6 +86,16 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     coinSymbol: coin?.symbol
   })
 
+  console.log('📈 Price History:', {
+    coinId,
+    period: chartPeriod,
+    days: daysMap[chartPeriod],
+    priceHistory,
+    pricesCount: priceHistory?.prices?.length || 0,
+    transactionsCount: priceHistory?.transactions?.length || 0,
+    loading: priceHistoryLoading
+  })
+
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
     onSuccess: (data) => {
       toast.success(data.added ? 'Added to watchlist' : 'Removed from watchlist')
