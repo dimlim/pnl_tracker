@@ -155,6 +155,14 @@ const MOCK_MARKET_DATA = [
 ]
 
 export const marketsRouter = router({
+  // Clear price history cache (for debugging)
+  clearPriceCache: protectedProcedure.mutation(() => {
+    const size = priceHistoryCache.size
+    priceHistoryCache.clear()
+    console.log(`🗑️ Cleared price history cache (${size} entries)`)
+    return { cleared: size }
+  }),
+
   // Get all markets with filters and sorting
   getAll: publicProcedure
     .input(
@@ -640,6 +648,7 @@ export const marketsRouter = router({
       z.object({
         coinId: z.string(),
         days: z.union([z.number(), z.literal('max')]).default(7), // 1, 7, 30, 90, 365, 'max'
+        skipCache: z.boolean().optional(), // For debugging - skip cache
       })
     )
     .query(async ({ input, ctx }) => {
@@ -700,12 +709,14 @@ export const marketsRouter = router({
           }
         }
 
-        // Check cache first
+        // Check cache first (unless skipCache is true)
         const cacheKey = `${coingeckoId}-${input.days}`
         const cached = priceHistoryCache.get(cacheKey)
         const cacheAge = cached ? Date.now() - cached.timestamp : null
         
-        if (cached && cacheAge && cacheAge < CACHE_TTL) {
+        if (input.skipCache) {
+          console.log('⚠️ SKIP CACHE requested - forcing fresh API call')
+        } else if (cached && cacheAge && cacheAge < CACHE_TTL) {
           console.log('💾 ========== USING CACHE ==========')
           console.log('🔑 Cache key:', cacheKey)
           console.log('⏰ Cache age:', Math.floor(cacheAge / 1000), 'seconds')
@@ -714,7 +725,7 @@ export const marketsRouter = router({
           return cached.data
         }
         
-        if (cached && cacheAge) {
+        if (cached && cacheAge && !input.skipCache) {
           console.log('🗑️ Cache expired:', { 
             cacheKey, 
             ageSeconds: Math.floor(cacheAge / 1000), 
