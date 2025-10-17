@@ -15,7 +15,7 @@ function formatPrice(price: number): string {
 }
 
 export function WatchlistWidget() {
-  const { data: marketsData } = trpc.markets.getAll.useQuery(
+  const { data: marketsData, isLoading, error } = trpc.markets.getAll.useQuery(
     {
       filter: 'watchlist',
       sortBy: 'market_cap_desc',
@@ -28,6 +28,14 @@ export function WatchlistWidget() {
   )
 
   const markets = marketsData?.markets || []
+
+  // Debug logging
+  console.log('📊 Watchlist Widget:', {
+    isLoading,
+    error,
+    marketsData,
+    marketsCount: markets.length
+  })
 
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
@@ -46,13 +54,21 @@ export function WatchlistWidget() {
       </CardHeader>
 
       <CardContent>
-        {markets.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto" />
+            <p className="text-gray-500 dark:text-gray-400 mt-3">Loading watchlist...</p>
+          </div>
+        ) : markets.length === 0 ? (
           <div className="text-center py-8">
             <Star className="w-12 h-12 mx-auto mb-3 text-gray-400" />
             <p className="text-gray-600 dark:text-gray-400 mb-2">No coins in watchlist</p>
             <p className="text-sm text-gray-500 dark:text-gray-500">
               Search for coins and click the star to add them
             </p>
+            {error && (
+              <p className="text-xs text-red-500 mt-2">Error: {error.message}</p>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
