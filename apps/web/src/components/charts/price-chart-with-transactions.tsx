@@ -137,36 +137,37 @@ export function PriceChartWithTransactions({
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={chartData}>
-        <defs>
-          <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-            <stop
-              offset="0%"
-              stopColor={isPositive ? '#22c55e' : '#f87171'}
-              stopOpacity={0.6}
-            />
-            <stop
-              offset="50%"
-              stopColor={isPositive ? '#22c55e' : '#f87171'}
-              stopOpacity={0.3}
-            />
-            <stop
-              offset="100%"
-              stopColor={isPositive ? '#22c55e' : '#f87171'}
-              stopOpacity={0.05}
-            />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
+    <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
+      <ResponsiveContainer width="100%" height={300}>
+        <ComposedChart data={chartData}>
+          <defs>
+            <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+              <stop
+                offset="0%"
+                stopColor={isPositive ? '#22c55e' : '#f87171'}
+                stopOpacity={0.8}
+              />
+              <stop
+                offset="50%"
+                stopColor={isPositive ? '#22c55e' : '#f87171'}
+                stopOpacity={0.4}
+              />
+              <stop
+                offset="100%"
+                stopColor={isPositive ? '#22c55e' : '#f87171'}
+                stopOpacity={0.1}
+              />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
 
-        <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" opacity={0.3} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#6b7280" opacity={0.5} />
         
         <XAxis
           dataKey="timestamp"
@@ -193,17 +194,17 @@ export function PriceChartWithTransactions({
               return format(new Date(timestamp), 'MMM yyyy')
             }
           }}
-          stroke="#d1d5db"
+          stroke="#6b7280"
           fontSize={12}
-          tick={{ fill: '#d1d5db' }}
+          tick={{ fill: '#374151' }}
         />
         
         <YAxis
           domain={['auto', 'auto']}
           tickFormatter={(value) => `$${value.toLocaleString()}`}
-          stroke="#d1d5db"
+          stroke="#6b7280"
           fontSize={12}
-          tick={{ fill: '#d1d5db' }}
+          tick={{ fill: '#374151' }}
         />
 
         <Tooltip
@@ -328,5 +329,6 @@ export function PriceChartWithTransactions({
         )}
       </ComposedChart>
     </ResponsiveContainer>
+    </div>
   )
 }
