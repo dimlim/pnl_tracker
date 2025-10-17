@@ -56,10 +56,19 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   const coin = marketsData?.markets.find((m) => m.id === coinId)
 
   // Get portfolio holdings for this coin
-  const { data: holdings } = trpc.markets.getCoinHoldings.useQuery(
+  const { data: holdings, isLoading: holdingsLoading, error: holdingsError } = trpc.markets.getCoinHoldings.useQuery(
     { coinId },
     { enabled: !!coin }
   )
+
+  // Debug logging
+  console.log('💼 Holdings Query:', {
+    coinId,
+    holdings,
+    holdingsLoading,
+    holdingsError,
+    coinSymbol: coin?.symbol
+  })
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
     onSuccess: (data) => {
@@ -258,7 +267,22 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
       </div>
 
       {/* Portfolio Holdings Section */}
-      {holdings && (
+      {holdingsLoading ? (
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <CardTitle>Your Holdings</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto" />
+              <p className="text-gray-500 dark:text-gray-400 mt-3">Loading holdings...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : holdings && (
         <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
           <CardHeader>
             <div className="flex items-center justify-between">
