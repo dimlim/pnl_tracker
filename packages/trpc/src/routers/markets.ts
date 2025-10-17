@@ -696,8 +696,10 @@ export const marketsRouter = router({
         }
 
         try {
-          const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${input.days}&interval=${input.days === 1 ? 'hourly' : 'daily'}`
-          console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, url })
+          // Use 'max' for days > 90 to get daily data, otherwise use exact days
+          const daysParam = input.days > 90 ? 'max' : input.days
+          const url = `https://api.coingecko.com/api/v3/coins/${coingeckoId}/market_chart?vs_currency=usd&days=${daysParam}`
+          console.log('🔍 Fetching CoinGecko data:', { coingeckoId, days: input.days, daysParam, url })
           
           // Call CoinGecko market_chart API
           const response = await fetch(url)
