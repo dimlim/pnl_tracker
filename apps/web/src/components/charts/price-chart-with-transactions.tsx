@@ -143,18 +143,18 @@ export function PriceChartWithTransactions({
           <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
             <stop
               offset="0%"
-              stopColor={isPositive ? '#10b981' : '#ef4444'}
-              stopOpacity={0.4}
+              stopColor={isPositive ? '#22c55e' : '#f87171'}
+              stopOpacity={0.6}
             />
             <stop
               offset="50%"
-              stopColor={isPositive ? '#10b981' : '#ef4444'}
-              stopOpacity={0.2}
+              stopColor={isPositive ? '#22c55e' : '#f87171'}
+              stopOpacity={0.3}
             />
             <stop
               offset="100%"
-              stopColor={isPositive ? '#10b981' : '#ef4444'}
-              stopOpacity={0}
+              stopColor={isPositive ? '#22c55e' : '#f87171'}
+              stopOpacity={0.05}
             />
           </linearGradient>
           <filter id="glow">
@@ -166,7 +166,7 @@ export function PriceChartWithTransactions({
           </filter>
         </defs>
 
-        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#4b5563" opacity={0.3} />
         
         <XAxis
           dataKey="timestamp"
@@ -193,15 +193,17 @@ export function PriceChartWithTransactions({
               return format(new Date(timestamp), 'MMM yyyy')
             }
           }}
-          stroke="#9ca3af"
+          stroke="#d1d5db"
           fontSize={12}
+          tick={{ fill: '#d1d5db' }}
         />
         
         <YAxis
           domain={['auto', 'auto']}
           tickFormatter={(value) => `$${value.toLocaleString()}`}
-          stroke="#9ca3af"
+          stroke="#d1d5db"
           fontSize={12}
+          tick={{ fill: '#d1d5db' }}
         />
 
         <Tooltip
@@ -285,12 +287,12 @@ export function PriceChartWithTransactions({
         <Area
           type="monotone"
           dataKey="price"
-          stroke={isPositive ? '#10b981' : '#ef4444'}
-          strokeWidth={3}
+          stroke={isPositive ? '#22c55e' : '#f87171'}
+          strokeWidth={4}
           fill="url(#colorPrice)"
           animationDuration={500}
           dot={false}
-          activeDot={{ r: 6, strokeWidth: 2, fill: isPositive ? '#10b981' : '#ef4444' }}
+          activeDot={{ r: 8, strokeWidth: 3, fill: isPositive ? '#22c55e' : '#f87171', stroke: '#fff' }}
         />
 
         {/* Transaction Markers */}
