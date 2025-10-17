@@ -48,13 +48,27 @@ export function PriceChartWithTransactions({
   currentPrice,
 }: PriceChartWithTransactionsProps) {
   const chartData = useMemo(() => {
+    console.log('📊 Chart Data Calculation:', {
+      hasPriceData: !!priceData,
+      priceDataLength: priceData?.length || 0,
+      hasSparkline: !!sparkline,
+      sparklineLength: sparkline?.length || 0,
+      firstPriceData: priceData?.[0],
+      firstSparkline: sparkline?.[0]
+    })
+
     // Use priceData if available, otherwise use sparkline
     if (priceData && priceData.length > 0) {
+      console.log('✅ Using priceData:', priceData.length, 'points')
       return priceData
     }
 
-    if (!sparkline || sparkline.length === 0) return []
+    if (!sparkline || sparkline.length === 0) {
+      console.log('❌ No data available')
+      return []
+    }
 
+    console.log('⚠️ Falling back to sparkline:', sparkline.length, 'points')
     // Create data points from sparkline (7 days = 168 hours)
     const now = Date.now()
     const hourInMs = 60 * 60 * 1000
