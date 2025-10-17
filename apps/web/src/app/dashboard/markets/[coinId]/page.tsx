@@ -42,7 +42,7 @@ function formatMarketCap(value: number): string {
 
 export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: string }> }) {
   const { coinId } = use(params)
-  const [chartPeriod, setChartPeriod] = useState<'24h' | '7d' | '30d' | '90d' | '1y'>('7d')
+  const [chartPeriod, setChartPeriod] = useState<'5m' | '15m' | '1h' | '4h' | '1d' | '7d' | '30d' | '90d' | '1y'>('7d')
 
   const utils = trpc.useUtils()
 
@@ -62,9 +62,13 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     { enabled: !!coin }
   )
 
-  // Map chart period to days
-  const daysMap = {
-    '24h': 1,
+  // Map chart period to days for CoinGecko API
+  const daysMap: Record<typeof chartPeriod, number> = {
+    '5m': 0.003472, // ~5 minutes in days
+    '15m': 0.010417, // ~15 minutes
+    '1h': 0.041667, // 1 hour
+    '4h': 0.166667, // 4 hours
+    '1d': 1,
     '7d': 7,
     '30d': 30,
     '90d': 90,
@@ -453,13 +457,14 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Price Chart</CardTitle>
-            <div className="flex gap-2">
-              {(['24h', '7d', '30d', '90d', '1y'] as const).map((period) => (
+            <div className="flex gap-2 flex-wrap">
+              {(['5m', '15m', '1h', '4h', '1d', '7d', '30d', '90d', '1y'] as const).map((period) => (
                 <Button
                   key={period}
                   variant={chartPeriod === period ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setChartPeriod(period)}
+                  className="min-w-[50px]"
                 >
                   {period}
                 </Button>

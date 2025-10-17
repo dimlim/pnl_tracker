@@ -153,24 +153,48 @@ export function PriceChartWithTransactions({
 
             const data = payload[0].payload
             const isTransaction = 'type' in data
+            
+            // Calculate price change from first data point
+            const firstPrice = chartData[0]?.price || data.price
+            const priceChange = data.price - firstPrice
+            const priceChangePercent = (priceChange / firstPrice) * 100
 
             return (
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {format(new Date(data.timestamp), 'MMM d, yyyy HH:mm')}
+              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-lg min-w-[200px]">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  {format(new Date(data.timestamp), 'MMM d, yyyy HH:mm:ss')}
                 </div>
-                <div className="text-sm font-semibold">
-                  ${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Price:</span>
+                    <span className="text-sm font-bold">
+                      ${data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Change:</span>
+                    <span className={`text-xs font-medium ${
+                      priceChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
+                      {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+                    </span>
+                  </div>
                 </div>
+
                 {isTransaction && (
                   <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <div className={`text-xs font-medium ${
+                    <div className={`text-xs font-bold mb-1 ${
                       data.type === 'buy' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
-                      {data.type.toUpperCase()}
+                      🎯 {data.type.toUpperCase()} TRANSACTION
                     </div>
                     <div className="text-xs text-gray-600 dark:text-gray-400">
-                      {data.quantity.toLocaleString()} {symbol}
+                      Amount: {data.quantity.toLocaleString()} {symbol}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400">
+                      Value: ${(data.quantity * data.price).toLocaleString()}
                     </div>
                     {data.fee > 0 && (
                       <div className="text-xs text-gray-500">
