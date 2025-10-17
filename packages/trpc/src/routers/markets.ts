@@ -7,7 +7,7 @@ import { fetchCoinCapHistory } from '../services/coincap'
 
 // Simple in-memory cache for price history to avoid rate limiting
 const priceHistoryCache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_TTL = 60000 // 60 seconds
+const CACHE_TTL = 300000 // 5 minutes (300 seconds) - increased to reduce API calls
 
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
