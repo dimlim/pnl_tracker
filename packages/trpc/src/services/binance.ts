@@ -96,14 +96,19 @@ export async function fetchBinanceHistory(
       url 
     })
 
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
 
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Binance API error:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText
+        error: errorText,
+        url
       })
       return []
     }
@@ -130,7 +135,11 @@ export async function fetchBinanceHistory(
 
     return prices
   } catch (error) {
-    console.error('Failed to fetch Binance data:', error)
+    console.error('❌ Failed to fetch Binance data:', {
+      error: error instanceof Error ? error.message : String(error),
+      coinId,
+      days
+    })
     return []
   }
 }
