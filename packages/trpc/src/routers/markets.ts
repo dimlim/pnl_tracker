@@ -481,6 +481,72 @@ export const marketsRouter = router({
         return []
       }
     }),
+
+  // Get portfolio holdings for a specific coin by CoinGecko ID
+  getCoinHoldings: protectedProcedure
+    .input(
+      z.object({
+        coinId: z.string(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      try {
+        // Find asset by CoinGecko ID
+        const { data: asset } = await ctx.supabase
+          .from('assets')
+          .select('id, symbol, name')
+          .eq('coingecko_id', input.coinId)
+          .single()
+
+        if (!asset) {
+          return null
+        }
+
+        // Get all positions for this asset across all portfolios
+        const { data: positions } = await ctx.supabase
+          .from('positions')
+          .select(`
+            quantity,
+            avg_buy_price,
+            total_invested,
+            portfolios (
+              id,
+              name
+            )
+          `)
+          .eq('asset_id', asset.id)
+          .eq('user_id', ctx.user.id)
+          .gt('quantity', 0)
+
+        if (!positions || positions.length === 0) {
+          return null
+        }
+
+        // Calculate total holdings across all portfolios
+        const totalQuantity = positions.reduce((sum, p) => sum + Number(p.quantity), 0)
+        const totalInvested = positions.reduce((sum, p) => sum + Number(p.total_invested), 0)
+        const avgBuyPrice = totalInvested / totalQuantity
+
+        return {
+          assetId: asset.id,
+          symbol: asset.symbol,
+          name: asset.name,
+          totalQuantity,
+          avgBuyPrice,
+          totalInvested,
+          portfolios: positions.map((p: any) => ({
+            id: p.portfolios.id,
+            name: p.portfolios.name,
+            quantity: Number(p.quantity),
+            avgBuyPrice: Number(p.avg_buy_price),
+            totalInvested: Number(p.total_invested),
+          })),
+        }
+      } catch (error) {
+        console.error('Failed to get coin holdings:', error)
+        return null
+      }
+    }),
 })
 
 // Helper function to sort markets

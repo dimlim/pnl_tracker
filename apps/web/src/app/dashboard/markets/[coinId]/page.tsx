@@ -14,7 +14,11 @@ import {
   ExternalLink,
   Globe,
   Twitter,
-  Github
+  Github,
+  Wallet,
+  DollarSign,
+  Target,
+  PieChart
 } from 'lucide-react'
 import { trpc } from '@/lib/trpc'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
@@ -50,6 +54,12 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   })
 
   const coin = marketsData?.markets.find((m) => m.id === coinId)
+
+  // Get portfolio holdings for this coin
+  const { data: holdings } = trpc.markets.getCoinHoldings.useQuery(
+    { coinId },
+    { enabled: !!coin }
+  )
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
     onSuccess: (data) => {
@@ -246,6 +256,141 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
           </CardContent>
         </Card>
       </div>
+
+      {/* Portfolio Holdings Section */}
+      {holdings && (
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <CardTitle>Your Holdings</CardTitle>
+              </div>
+              <Button size="sm" asChild>
+                <Link href={`/dashboard/transactions?asset=${coinId}`}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Transaction
+                </Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-4">
+              {/* Quantity */}
+              <div>
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  <PieChart className="w-4 h-4" />
+                  <span>Quantity</span>
+                </div>
+                <div className="text-2xl font-bold">
+                  {holdings.totalQuantity.toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 8,
+                  })}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {coin.symbol}
+                </div>
+              </div>
+
+              {/* Average Buy Price */}
+              <div>
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  <DollarSign className="w-4 h-4" />
+                  <span>Avg Buy Price</span>
+                </div>
+                <div className="text-2xl font-bold">
+                  {formatPrice(holdings.avgBuyPrice)}
+                </div>
+                <div className={cn(
+                  'text-sm font-medium mt-1',
+                  coin.currentPrice >= holdings.avgBuyPrice
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
+                )}>
+                  {coin.currentPrice >= holdings.avgBuyPrice ? '▲' : '▼'}{' '}
+                  {((coin.currentPrice - holdings.avgBuyPrice) / holdings.avgBuyPrice * 100).toFixed(2)}%
+                </div>
+              </div>
+
+              {/* Current Value */}
+              <div>
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  <Wallet className="w-4 h-4" />
+                  <span>Current Value</span>
+                </div>
+                <div className="text-2xl font-bold">
+                  {formatPrice(holdings.totalQuantity * coin.currentPrice)}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Invested: {formatPrice(holdings.totalInvested)}
+                </div>
+              </div>
+
+              {/* P&L */}
+              <div>
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-2">
+                  <Target className="w-4 h-4" />
+                  <span>Profit/Loss</span>
+                </div>
+                <div className={cn(
+                  'text-2xl font-bold',
+                  (holdings.totalQuantity * coin.currentPrice - holdings.totalInvested) >= 0
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
+                )}>
+                  {(holdings.totalQuantity * coin.currentPrice - holdings.totalInvested) >= 0 ? '+' : ''}
+                  {formatPrice(holdings.totalQuantity * coin.currentPrice - holdings.totalInvested)}
+                </div>
+                <div className={cn(
+                  'text-sm font-medium mt-1',
+                  (holdings.totalQuantity * coin.currentPrice - holdings.totalInvested) >= 0
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
+                )}>
+                  {((holdings.totalQuantity * coin.currentPrice - holdings.totalInvested) / holdings.totalInvested * 100).toFixed(2)}% ROI
+                </div>
+              </div>
+            </div>
+
+            {/* Portfolios List */}
+            {holdings.portfolios.length > 1 && (
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Across {holdings.portfolios.length} portfolios:
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {holdings.portfolios.map((portfolio) => (
+                    <div
+                      key={portfolio.id}
+                      className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 rounded-lg"
+                    >
+                      <div>
+                        <div className="font-medium">{portfolio.name}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {portfolio.quantity.toLocaleString(undefined, {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 8,
+                          })}{' '}
+                          {coin.symbol}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium">
+                          {formatPrice(portfolio.quantity * coin.currentPrice)}
+                        </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          Avg: {formatPrice(portfolio.avgBuyPrice)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Chart Placeholder */}
       <Card>
