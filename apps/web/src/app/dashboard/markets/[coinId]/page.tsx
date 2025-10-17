@@ -86,11 +86,15 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     }
   )
 
-  // Refetch when period changes
+  // Refetch when period changes (with debounce to avoid rate limiting)
   useEffect(() => {
-    if (coin) {
+    if (!coin) return
+
+    const timer = setTimeout(() => {
       refetch()
-    }
+    }, 300) // Wait 300ms before refetching
+
+    return () => clearTimeout(timer)
   }, [chartPeriod, coin, refetch])
 
   // Debug logging

@@ -711,6 +711,12 @@ export const marketsRouter = router({
               statusText: response.statusText,
               error: errorText
             })
+
+            // If rate limited (429), use sparkline as fallback
+            if (response.status === 429) {
+              console.warn('⚠️ Rate limited! Using sparkline fallback')
+            }
+
             return {
               prices: [],
               transactions: (transactions || []).map(tx => ({
