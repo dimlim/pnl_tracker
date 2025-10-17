@@ -80,12 +80,25 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
 
   // Get price history with transactions
   // React Query will cache by { coinId, days } - when days changes, new query is made
-  const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
+  // Use trpc.useContext() to access query client for manual control
+  const { data: priceHistory, isLoading: priceHistoryLoading, dataUpdatedAt } = trpc.markets.getPriceHistory.useQuery(
     { coinId, days: currentDays },
     { 
       enabled: !!coin && !!currentDays,
+      // Force refetch when period changes by using dataUpdatedAt
+      refetchOnMount: true,
     }
   )
+
+  // Track when period changes to force component update
+  const [lastPeriod, setLastPeriod] = useState(chartPeriod)
+  
+  useEffect(() => {
+    if (lastPeriod !== chartPeriod) {
+      setLastPeriod(chartPeriod)
+      // Force re-render by updating state
+    }
+  }, [chartPeriod, lastPeriod])
 
   // Debug logging
   console.log('💼 Holdings Query:', {
@@ -102,9 +115,11 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   console.log('📈 Price History Query:', {
     coinId,
     period: chartPeriod,
+    lastPeriod,
     currentDays,
     chartKey,
     queryInput: { coinId, days: currentDays },
+    dataUpdatedAt: new Date(dataUpdatedAt).toLocaleTimeString(),
     priceHistory,
     pricesCount: priceHistory?.prices?.length || 0,
     transactionsCount: priceHistory?.transactions?.length || 0,
