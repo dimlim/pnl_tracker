@@ -63,7 +63,15 @@ export async function fetchCoinCapHistory(
 
     const url = `https://api.coincap.io/v2/assets/${coincapId}/history?interval=${interval}&start=${start}&end=${end}`
     
-    console.log('🔍 Fetching CoinCap data:', { coincapId, days, interval, url })
+    console.log('🔍 Fetching CoinCap data:', { 
+      originalCoinId: coinId,
+      coincapId, 
+      days, 
+      interval,
+      startDate: new Date(start).toISOString(),
+      endDate: new Date(end).toISOString(),
+      url 
+    })
 
     const response = await fetch(url, {
       headers: {

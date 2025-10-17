@@ -55,21 +55,23 @@ export function PriceChartWrapper({ coinId, days, period, coin, holdings }: Pric
     )
   }
 
-  if (coin.sparkline7d && coin.sparkline7d.length > 0) {
-    return (
-      <PriceChartWithTransactions
-        sparkline={coin.sparkline7d}
-        transactions={priceHistory?.transactions || []}
-        avgBuyPrice={holdings?.avgBuyPrice}
-        symbol={coin.symbol}
-        currentPrice={coin.currentPrice}
-      />
-    )
-  }
-
+  // Don't use sparkline fallback - show proper error instead
   return (
-    <div className="h-[300px] flex items-center justify-center text-gray-500 dark:text-gray-400">
-      Chart data not available
+    <div className="h-[300px] flex items-center justify-center">
+      <div className="text-center space-y-2">
+        <p className="text-gray-500 dark:text-gray-400">
+          Unable to load price history
+        </p>
+        <p className="text-sm text-gray-400">
+          {priceHistory ? 'No price data available' : 'API rate limit reached'}
+        </p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Retry
+        </button>
+      </div>
     </div>
   )
 }
