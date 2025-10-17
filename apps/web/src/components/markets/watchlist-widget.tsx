@@ -27,6 +27,8 @@ export function WatchlistWidget() {
     {
       refetchInterval: 60000,
       staleTime: 30000, // Consider data fresh for 30s
+      retry: 1, // Only retry once
+      retryDelay: 1000, // Wait 1s before retry
     }
   )
 
@@ -75,7 +77,22 @@ export function WatchlistWidget() {
       </CardHeader>
 
       <CardContent>
-        {isLoading ? (
+        {error ? (
+          <div className="text-center py-8">
+            <div className="text-red-500 mb-3">⚠️</div>
+            <p className="text-red-600 dark:text-red-400 mb-2 font-medium">Failed to load watchlist</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              {error.message || 'Unknown error'}
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRefresh}
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto" />
             <p className="text-gray-500 dark:text-gray-400 mt-3">Loading watchlist...</p>
@@ -87,9 +104,6 @@ export function WatchlistWidget() {
             <p className="text-sm text-gray-500 dark:text-gray-500">
               Search for coins and click the star to add them
             </p>
-            {error && (
-              <p className="text-xs text-red-500 mt-2">Error: {error.message}</p>
-            )}
           </div>
         ) : (
           <div className="space-y-2">
