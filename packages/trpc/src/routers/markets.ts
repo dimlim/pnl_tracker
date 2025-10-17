@@ -539,35 +539,74 @@ export const marketsRouter = router({
 
         console.log('✅ Found asset:', asset)
 
-        // Get all positions for this asset across all portfolios
-        const { data: positions } = await ctx.supabase
-          .from('portfolio_positions')
-          .select(`
-            quantity_total,
-            avg_entry_price,
-            portfolios (
-              id,
-              name,
-              user_id
-            )
-          `)
+        // Get all user's portfolios
+        const { data: portfolios } = await ctx.supabase
+          .from('portfolios')
+          .select('id, name')
+          .eq('user_id', ctx.user.id)
+
+        if (!portfolios || portfolios.length === 0) {
+          console.log('❌ No portfolios found for user')
+          return null
+        }
+
+        const portfolioIds = portfolios.map(p => p.id)
+
+        // Get all transactions for this asset across all portfolios
+        const { data: txs } = await ctx.supabase
+          .from('transactions')
+          .select('*')
           .eq('asset_id', asset.id)
-          .gt('quantity_total', 0)
+          .in('portfolio_id', portfolioIds)
+          .order('timestamp', { ascending: true })
 
-        if (!positions || positions.length === 0) {
+        if (!txs || txs.length === 0) {
+          console.log('❌ No transactions found for asset')
           return null
         }
 
-        // Filter positions by user_id and calculate total holdings
-        const userPositions = positions.filter((p: any) => p.portfolios.user_id === ctx.user.id)
-        
-        if (userPositions.length === 0) {
+        // Calculate holdings per portfolio
+        const portfolioHoldings: Record<string, { quantity: number; totalCost: number; portfolioId: string; portfolioName: string }> = {}
+
+        for (const portfolio of portfolios) {
+          portfolioHoldings[portfolio.id] = {
+            quantity: 0,
+            totalCost: 0,
+            portfolioId: portfolio.id,
+            portfolioName: portfolio.name,
+          }
+        }
+
+        // Process transactions to calculate current holdings
+        for (const tx of txs) {
+          const holding = portfolioHoldings[tx.portfolio_id]
+          if (!holding) continue
+
+          if (tx.type === 'buy' || tx.type === 'transfer_in' || tx.type === 'deposit' || tx.type === 'airdrop') {
+            holding.quantity += Number(tx.quantity)
+            holding.totalCost += Number(tx.quantity) * Number(tx.price) + (Number(tx.fee) || 0)
+          } else if (tx.type === 'sell' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+            const avgPrice = holding.quantity > 0 ? holding.totalCost / holding.quantity : 0
+            const costBasis = Number(tx.quantity) * avgPrice
+            
+            holding.quantity -= Number(tx.quantity)
+            holding.totalCost -= costBasis
+          }
+        }
+
+        // Filter portfolios with holdings and calculate totals
+        const portfoliosWithHoldings = Object.values(portfolioHoldings).filter(h => h.quantity > 0)
+
+        if (portfoliosWithHoldings.length === 0) {
+          console.log('❌ No current holdings found')
           return null
         }
 
-        const totalQuantity = userPositions.reduce((sum, p: any) => sum + Number(p.quantity_total), 0)
-        const totalInvested = userPositions.reduce((sum, p: any) => sum + (Number(p.quantity_total) * Number(p.avg_entry_price)), 0)
-        const avgBuyPrice = totalInvested / totalQuantity
+        const totalQuantity = portfoliosWithHoldings.reduce((sum, h) => sum + h.quantity, 0)
+        const totalInvested = portfoliosWithHoldings.reduce((sum, h) => sum + h.totalCost, 0)
+        const avgBuyPrice = totalQuantity > 0 ? totalInvested / totalQuantity : 0
+
+        console.log('✅ Holdings calculated:', { totalQuantity, avgBuyPrice, portfoliosCount: portfoliosWithHoldings.length })
 
         return {
           assetId: asset.id,
@@ -576,12 +615,12 @@ export const marketsRouter = router({
           totalQuantity,
           avgBuyPrice,
           totalInvested,
-          portfolios: userPositions.map((p: any) => ({
-            id: p.portfolios.id,
-            name: p.portfolios.name,
-            quantity: Number(p.quantity_total),
-            avgBuyPrice: Number(p.avg_entry_price),
-            totalInvested: Number(p.quantity_total) * Number(p.avg_entry_price),
+          portfolios: portfoliosWithHoldings.map((h) => ({
+            id: h.portfolioId,
+            name: h.portfolioName,
+            quantity: h.quantity,
+            avgBuyPrice: h.quantity > 0 ? h.totalCost / h.quantity : 0,
+            totalInvested: h.totalCost,
           })),
         }
       } catch (error) {
