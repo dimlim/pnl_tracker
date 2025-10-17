@@ -74,7 +74,11 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
   // Get price history with transactions
   const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
     { coinId, days: daysMap[chartPeriod] },
-    { enabled: !!coin }
+    { 
+      enabled: !!coin,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    }
   )
 
   // Debug logging
@@ -93,7 +97,9 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
     priceHistory,
     pricesCount: priceHistory?.prices?.length || 0,
     transactionsCount: priceHistory?.transactions?.length || 0,
-    loading: priceHistoryLoading
+    loading: priceHistoryLoading,
+    firstPrice: priceHistory?.prices?.[0],
+    lastPrice: priceHistory?.prices?.[priceHistory.prices.length - 1]
   })
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
