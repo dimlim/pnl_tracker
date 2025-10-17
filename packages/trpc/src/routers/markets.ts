@@ -516,7 +516,20 @@ export const marketsRouter = router({
             .maybeSingle()
           
           console.log('Search by symbol:', { assetBySymbol, symbolError })
-          asset = assetBySymbol
+          
+          if (assetBySymbol) {
+            asset = assetBySymbol
+          } else {
+            // Try by name (case-insensitive) as last resort
+            const { data: assetByName, error: nameError } = await ctx.supabase
+              .from('assets')
+              .select('id, symbol, name, coingecko_id')
+              .ilike('name', input.coinId)
+              .maybeSingle()
+            
+            console.log('Search by name:', { assetByName, nameError })
+            asset = assetByName
+          }
         }
 
         if (!asset) {
