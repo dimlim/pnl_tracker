@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -76,7 +76,7 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
 
   // Get price history with transactions
   // Key includes chartPeriod to force refetch when period changes
-  const { data: priceHistory, isLoading: priceHistoryLoading } = trpc.markets.getPriceHistory.useQuery(
+  const { data: priceHistory, isLoading: priceHistoryLoading, refetch } = trpc.markets.getPriceHistory.useQuery(
     { coinId, days: daysMap[chartPeriod] },
     { 
       enabled: !!coin,
@@ -85,6 +85,13 @@ export default function CoinDetailsPage({ params }: { params: Promise<{ coinId: 
       staleTime: 0, // Always fetch fresh data
     }
   )
+
+  // Refetch when period changes
+  useEffect(() => {
+    if (coin) {
+      refetch()
+    }
+  }, [chartPeriod, coin, refetch])
 
   // Debug logging
   console.log('💼 Holdings Query:', {
