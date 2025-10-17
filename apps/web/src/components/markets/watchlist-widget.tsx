@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Star, TrendingUp, TrendingDown, Plus } from 'lucide-react'
+import { Star, TrendingUp, TrendingDown, Plus, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { trpc } from '@/lib/trpc'
 import { CryptoIcon } from '@/components/ui/crypto-icon'
@@ -15,27 +15,37 @@ function formatPrice(price: number): string {
 }
 
 export function WatchlistWidget() {
-  const { data: marketsData, isLoading, error } = trpc.markets.getAll.useQuery(
+  const utils = trpc.useUtils()
+  
+  const { data: marketsData, isLoading, error, refetch } = trpc.markets.getAll.useQuery(
     {
       filter: 'watchlist',
       sortBy: 'market_cap_desc',
       page: 1,
-      perPage: 5,
+      perPage: 100, // Get more to ensure we get results
     },
     {
       refetchInterval: 60000,
+      staleTime: 30000, // Consider data fresh for 30s
     }
   )
 
-  const markets = marketsData?.markets || []
+  const markets = (marketsData?.markets || []).slice(0, 5) // Show only top 5
 
   // Debug logging
   console.log('📊 Watchlist Widget:', {
     isLoading,
     error,
     marketsData,
-    marketsCount: markets.length
+    totalCount: marketsData?.markets?.length || 0,
+    displayCount: markets.length,
+    firstCoin: markets[0]?.id
   })
+
+  const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered')
+    refetch()
+  }
 
   return (
     <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800">
@@ -45,11 +55,22 @@ export function WatchlistWidget() {
             <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
             <CardTitle className="text-lg">My Watchlist</CardTitle>
           </div>
-          <Link href="/dashboard/markets?filter=watchlist">
-            <Button variant="ghost" size="sm">
-              View All →
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isLoading}
+              title="Refresh watchlist"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
-          </Link>
+            <Link href="/dashboard/markets?filter=watchlist">
+              <Button variant="ghost" size="sm">
+                View All →
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardHeader>
 
