@@ -24,15 +24,28 @@ export function GlobalSearch() {
     }
   )
 
-  // Log search results
+  // Log search results and show toast for debugging
   useEffect(() => {
-    if (results) {
-      console.log('🔍 Search results for', debouncedQuery, ':', results)
+    if (debouncedQuery) {
+      console.log('🔍 Searching for:', debouncedQuery)
+      console.log('📊 Results:', results)
+      console.log('⏳ Loading:', isLoading)
+      console.log('❌ Error:', error)
+      
+      // Show results count in toast for debugging
+      if (results && !isLoading) {
+        if (results.length === 0) {
+          toast.info(`No results found for "${debouncedQuery}"`)
+        } else {
+          toast.success(`Found ${results.length} results for "${debouncedQuery}"`)
+        }
+      }
+      
+      if (error) {
+        toast.error(`Search error: ${error.message}`)
+      }
     }
-    if (error) {
-      console.error('❌ Search error:', error)
-    }
-  }, [results, error, debouncedQuery])
+  }, [results, error, debouncedQuery, isLoading])
 
   const toggleWatchlist = trpc.markets.toggleWatchlist.useMutation({
     onSuccess: (data) => {
