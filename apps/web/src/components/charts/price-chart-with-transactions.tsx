@@ -60,6 +60,31 @@ export function PriceChartWithTransactions({
     // Use priceData if available, otherwise use sparkline
     if (priceData && priceData.length > 0) {
       console.log('✅ Using priceData:', priceData.length, 'points')
+      
+      // Log first, middle, and last data points for debugging
+      const first = priceData[0]
+      const middle = priceData[Math.floor(priceData.length / 2)]
+      const last = priceData[priceData.length - 1]
+      
+      console.log('📊 Price Data Range:', {
+        first: { 
+          timestamp: first.timestamp, 
+          date: new Date(first.timestamp).toISOString(),
+          price: first.price 
+        },
+        middle: { 
+          timestamp: middle.timestamp, 
+          date: new Date(middle.timestamp).toISOString(),
+          price: middle.price 
+        },
+        last: { 
+          timestamp: last.timestamp, 
+          date: new Date(last.timestamp).toISOString(),
+          price: last.price 
+        },
+        rangeInDays: (last.timestamp - first.timestamp) / (1000 * 60 * 60 * 24)
+      })
+      
       return priceData
     }
 
@@ -147,7 +172,27 @@ export function PriceChartWithTransactions({
           dataKey="timestamp"
           type="number"
           domain={['dataMin', 'dataMax']}
-          tickFormatter={(timestamp) => format(new Date(timestamp), 'MMM d')}
+          tickFormatter={(timestamp) => {
+            // Calculate time range to determine format
+            const firstTimestamp = chartData[0]?.timestamp || timestamp
+            const lastTimestamp = chartData[chartData.length - 1]?.timestamp || timestamp
+            const rangeInDays = (lastTimestamp - firstTimestamp) / (1000 * 60 * 60 * 24)
+            
+            // Use different formats based on time range
+            if (rangeInDays < 1) {
+              // Less than 1 day: show hours
+              return format(new Date(timestamp), 'HH:mm')
+            } else if (rangeInDays < 7) {
+              // Less than 7 days: show day and time
+              return format(new Date(timestamp), 'MMM d HH:mm')
+            } else if (rangeInDays < 90) {
+              // Less than 90 days: show month and day
+              return format(new Date(timestamp), 'MMM d')
+            } else {
+              // More than 90 days: show month and year
+              return format(new Date(timestamp), 'MMM yyyy')
+            }
+          }}
           stroke="#9ca3af"
           fontSize={12}
         />

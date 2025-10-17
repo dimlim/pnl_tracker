@@ -786,12 +786,35 @@ export const marketsRouter = router({
             price,
           }))
 
-          console.log('📊 Processed prices:', {
-            count: prices.length,
-            first: prices[0],
-            last: prices[prices.length - 1],
-            sample: prices.slice(0, 3)
-          })
+          // Detailed logging for debugging
+          if (prices.length > 0) {
+            const first = prices[0]
+            const last = prices[prices.length - 1]
+            const rangeInMs = last.timestamp - first.timestamp
+            const rangeInDays = rangeInMs / (1000 * 60 * 60 * 24)
+            
+            console.log('📊 Processed prices:', {
+              count: prices.length,
+              first: { 
+                timestamp: first.timestamp, 
+                date: new Date(first.timestamp).toISOString(),
+                price: first.price 
+              },
+              last: { 
+                timestamp: last.timestamp, 
+                date: new Date(last.timestamp).toISOString(),
+                price: last.price 
+              },
+              rangeInMs,
+              rangeInDays: rangeInDays.toFixed(2),
+              requestedDays: input.days,
+              sample: prices.slice(0, 3).map(p => ({
+                timestamp: p.timestamp,
+                date: new Date(p.timestamp).toISOString(),
+                price: p.price
+              }))
+            })
+          }
 
           const result = {
             prices,
