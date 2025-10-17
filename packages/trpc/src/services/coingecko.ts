@@ -55,8 +55,12 @@ export interface MarketData {
   sparkline7d: number[]
 }
 
+// Simple in-memory cache
+const cache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_TTL = 60000 // 1 minute
+
 /**
- * Retry helper for fetch requests
+ * Retry helper for fetch requests with rate limit handling
  */
 async function fetchWithRetry(
   url: string,
@@ -70,6 +74,22 @@ async function fetchWithRetry(
         ...options,
         signal: AbortSignal.timeout(10000), // 10 second timeout
       })
+      
+      // Handle rate limiting (429)
+      if (response.status === 429) {
+        const isLastAttempt = i === retries - 1
+        if (isLastAttempt) {
+          console.error('❌ Rate limit exceeded, all retries exhausted')
+          throw new Error('CoinGecko API rate limit exceeded. Please try again later.')
+        }
+        
+        // Wait longer for rate limits (60 seconds)
+        const rateLimitDelay = 60000
+        console.warn(`⚠️ Rate limit hit (429), waiting ${rateLimitDelay}ms before retry...`)
+        await new Promise(resolve => setTimeout(resolve, rateLimitDelay))
+        continue
+      }
+      
       return response
     } catch (error) {
       const isLastAttempt = i === retries - 1
@@ -91,6 +111,14 @@ export async function fetchCoinGeckoMarkets(params: {
   page?: number
 }): Promise<MarketData[]> {
   const { perPage = 100, page = 1 } = params
+
+  // Check cache first
+  const cacheKey = `markets_${perPage}_${page}`
+  const cached = cache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log('✨ Using cached data for', cacheKey)
+    return cached.data
+  }
 
   try {
     const url = new URL(`${COINGECKO_API_BASE}/coins/markets`)
@@ -121,7 +149,7 @@ export async function fetchCoinGeckoMarkets(params: {
     const data = await response.json() as CoinGeckoMarket[]
     console.log('✅ CoinGecko returned', data.length, 'coins')
 
-    return data.map((coin) => ({
+    const result = data.map((coin) => ({
       id: coin.id,
       symbol: coin.symbol.toUpperCase(),
       name: coin.name,
@@ -136,8 +164,21 @@ export async function fetchCoinGeckoMarkets(params: {
       circulatingSupply: coin.circulating_supply,
       sparkline7d: coin.sparkline_in_7d?.price || [],
     }))
+
+    // Cache the result
+    cache.set(cacheKey, { data: result, timestamp: Date.now() })
+    console.log('💾 Cached data for', cacheKey)
+
+    return result
   } catch (error) {
     console.error('Failed to fetch CoinGecko markets:', error)
+    
+    // If we have stale cache, use it as fallback
+    if (cached) {
+      console.warn('⚠️ Using stale cache due to error')
+      return cached.data
+    }
+    
     throw error
   }
 }
@@ -218,11 +259,19 @@ export async function fetchCoinGeckoChart(params: {
  * Search coins by query
  */
 export async function searchCoinGecko(query: string) {
+  // Check cache first
+  const cacheKey = `search_${query.toLowerCase()}`
+  const cached = cache.get(cacheKey)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    console.log('✨ Using cached search for', query)
+    return cached.data
+  }
+
   try {
     const url = `${COINGECKO_API_BASE}/search`
     const params = new URLSearchParams({ query })
 
-    const response = await fetch(`${url}?${params}`, {
+    const response = await fetchWithRetry(`${url}?${params}`, {
       headers: {
         'Accept': 'application/json',
       },
@@ -230,13 +279,29 @@ export async function searchCoinGecko(query: string) {
 
     if (!response.ok) {
       console.error('CoinGecko search API error:', response.status)
+      // Return stale cache if available
+      if (cached) {
+        console.warn('⚠️ Using stale search cache due to error')
+        return cached.data
+      }
       return []
     }
 
     const data = await response.json() as any
-    return data.coins || []
+    const result = data.coins || []
+    
+    // Cache the result
+    cache.set(cacheKey, { data: result, timestamp: Date.now() })
+    console.log('💾 Cached search for', query)
+    
+    return result
   } catch (error) {
     console.error('Failed to search CoinGecko:', error)
+    // Return stale cache if available
+    if (cached) {
+      console.warn('⚠️ Using stale search cache due to error')
+      return cached.data
+    }
     return []
   }
 }
